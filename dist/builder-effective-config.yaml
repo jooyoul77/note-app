@@ -1,0 +1,9 @@
+directories:
+  output: dist
+  buildResources: build
+appId: com.note.app
+productName: 노트
+win:
+  target: nsis
+files: []
+electronVersion: 41.0.0

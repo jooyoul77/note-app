@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>노트</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --surface2: #242424;
+      --border: #2e2e2e;
+      --accent: #f0a500;
+      --text: #e8e8e8;
+      --text-muted: #888;
+      --danger: #e05252;
+    }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header h1 {
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: -0.3px;
+    }
+
+    header span {
+      font-size: 11px;
+      background: var(--accent);
+      color: #000;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 700;
+    }
+
+    .count {
+      margin-left: auto;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .editor {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    textarea {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 14px;
+      line-height: 1.7;
+      padding: 14px 16px;
+      resize: none;
+      min-height: 100px;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: var(--accent);
+    }
+
+    textarea::placeholder {
+      color: var(--text-muted);
+    }
+
+    .save-btn {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      padding: 14px 20px;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s, transform 0.1s;
+      align-self: flex-end;
+    }
+
+    .save-btn:hover { opacity: 0.85; }
+    .save-btn:active { transform: scale(0.97); }
+
+    .toolbar {
+      padding: 14px 24px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .search {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 13px;
+      padding: 8px 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search:focus { border-color: var(--accent); }
+    .search::placeholder { color: var(--text-muted); }
+
+    .sort-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 12px;
+      padding: 8px 14px;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .sort-btn:hover { color: var(--text); }
+
+    .notes {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .empty {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-top: 60px;
+      line-height: 2;
+    }
+
+    .note-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+
+    .note-card:hover {
+      border-color: #3e3e3e;
+      background: var(--surface2);
+    }
+
+    .note-card.editing {
+      border-color: var(--accent);
+    }
+
+    .note-preview {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .note-edit-area {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 14px;
+      line-height: 1.7;
+      resize: none;
+      outline: none;
+      white-space: pre-wrap;
+      word-break: break-all;
+      display: none;
+    }
+
+    .note-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+    }
+
+    .note-date {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .note-actions {
+      display: flex;
+      gap: 6px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .note-card:hover .note-actions { opacity: 1; }
+
+    .action-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      font-size: 11px;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+
+    .action-btn:hover { color: var(--text); border-color: #4e4e4e; }
+    .action-btn.del:hover { color: var(--danger); border-color: var(--danger); }
+    .action-btn.save-edit { color: var(--accent); border-color: var(--accent); display: none; }
+
+    .char-count {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: right;
+      padding: 0 24px 8px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📝 노트</h1>
+  <span>MVP</span>
+  <div class="count" id="count">0개</div>
+</header>
+
+<div class="editor">
+  <textarea id="input" placeholder="메모를 입력하세요...&#10;Ctrl+Enter 로 저장"></textarea>
+  <button class="save-btn" onclick="saveNote()">저장</button>
+</div>
+<div class="char-count" id="charCount">0자</div>
+
+<div class="toolbar">
+  <input class="search" id="search" placeholder="🔍 검색..." oninput="renderNotes()">
+  <button class="sort-btn" onclick="toggleSort()">🕐 최신순</button>
+</div>
+
+<div class="notes" id="notes"></div>
+
+<script>
+  let notes = JSON.parse(localStorage.getItem('notes_mvp') || '[]');
+  let sortNewest = true;
+
+  const input = document.getElementById('input');
+  const charCount = document.getElementById('charCount');
+
+  input.addEventListener('input', () => {
+    charCount.textContent = input.value.length + '자';
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.ctrlKey && e.key === 'Enter') saveNote();
+  });
+
+  function saveNote() {
+    const text = input.value.trim();
+    if (!text) return;
+    notes.unshift({ id: Date.now(), text, date: new Date().toISOString() });
+    persist();
+    input.value = '';
+    charCount.textContent = '0자';
+    renderNotes();
+  }
+
+  function deleteNote(id) {
+    notes = notes.filter(n => n.id !== id);
+    persist();
+    renderNotes();
+  }
+
+  function startEdit(id) {
+    const card = document.querySelector(`[data-id="${id}"]`);
+    const preview = card.querySelector('.note-preview');
+    const editArea = card.querySelector('.note-edit-area');
+    const saveBtn = card.querySelector('.save-edit');
+    const editBtn = card.querySelector('.edit-btn');
+    preview.style.display = 'none';
+    editArea.style.display = 'block';
+    editArea.style.minHeight = preview.scrollHeight + 'px';
+    saveBtn.style.display = 'inline';
+    editBtn.style.display = 'none';
+    card.classList.add('editing');
+    editArea.focus();
+  }
+
+  function saveEdit(id) {
+    const card = document.querySelector(`[data-id="${id}"]`);
+    const editArea = card.querySelector('.note-edit-area');
+    const text = editArea.value.trim();
+    if (!text) return;
+    const note = notes.find(n => n.id === id);
+    if (note) { note.text = text; note.edited = new Date().toISOString(); }
+    persist();
+    renderNotes();
+  }
+
+  function toggleSort() {
+    sortNewest = !sortNewest;
+    document.querySelector('.sort-btn').textContent = sortNewest ? '🕐 최신순' : '🕐 오래된순';
+    renderNotes();
+  }
+
+  function formatDate(iso) {
+    const d = new Date(iso);
+    const now = new Date();
+    const diff = now - d;
+    if (diff < 60000) return '방금 전';
+    if (diff < 3600000) return Math.floor(diff / 60000) + '분 전';
+    if (diff < 86400000) return Math.floor(diff / 3600000) + '시간 전';
+    return d.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function renderNotes() {
+    const q = document.getElementById('search').value.toLowerCase();
+    let filtered = notes.filter(n => n.text.toLowerCase().includes(q));
+    if (!sortNewest) filtered = [...filtered].reverse();
+
+    document.getElementById('count').textContent = notes.length + '개';
+    const container = document.getElementById('notes');
+
+    if (!filtered.length) {
+      container.innerHTML = `<div class="empty">${q ? '검색 결과가 없어요 🔍' : '메모를 작성해보세요 ✏️'}</div>`;
+      return;
+    }
+
+    container.innerHTML = filtered.map(n => `
+      <div class="note-card" data-id="${n.id}">
+        <div class="note-preview">${escHtml(n.text)}</div>
+        <textarea class="note-edit-area" rows="4">${escHtml(n.text)}</textarea>
+        <div class="note-footer">
+          <div class="note-date">${formatDate(n.edited || n.date)}${n.edited ? ' (수정됨)' : ''}</div>
+          <div class="note-actions">
+            <button class="action-btn edit-btn" onclick="startEdit(${n.id})">수정</button>
+            <button class="action-btn save-edit" onclick="saveEdit(${n.id})">저장</button>
+            <button class="action-btn del" onclick="deleteNote(${n.id})">삭제</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function escHtml(t) {
+    return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function persist() {
+    localStorage.setItem('notes_mvp', JSON.stringify(notes));
+  }
+
+  renderNotes();
+</script>
+</body>
+</html>
