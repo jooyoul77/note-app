@@ -6,6 +6,10 @@
   <title>노트</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#f0a500">
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');</script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -30,7 +34,7 @@
       flex-direction: column;
     }
 
-    /* ── 로그인 화면 ─────────────────────────── */
+    /* ── 로그인 ──────────────────────────────── */
     #authScreen {
       min-height: 100vh;
       display: flex;
@@ -109,20 +113,13 @@
 
     .auth-btn:hover { opacity: 0.85; }
     .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .auth-error {
-      font-size: 12px;
-      color: var(--danger);
-      margin-top: 10px;
-      text-align: center;
-      min-height: 18px;
-    }
+    .auth-error { font-size: 12px; color: var(--danger); margin-top: 10px; text-align: center; min-height: 18px; }
 
     /* ── 앱 ──────────────────────────────────── */
     #app { display: none; flex-direction: column; min-height: 100vh; }
 
     header {
-      padding: 16px 24px;
+      padding: 14px 24px;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
@@ -164,31 +161,74 @@
 
     .logout-btn:hover { color: var(--danger); border-color: var(--danger); }
 
+    /* ── 서식 툴바 ───────────────────────────── */
+    .fmt-toolbar {
+      display: flex;
+      gap: 2px;
+      flex-wrap: wrap;
+      padding: 6px 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px 8px 0 0;
+      border-bottom: none;
+    }
+
+    .fmt-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      min-width: 28px;
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    .fmt-btn:hover { background: var(--border); color: var(--text); }
+    .fmt-btn b { font-weight: 700; }
+    .fmt-btn i { font-style: italic; }
+
+    .fmt-sep {
+      width: 1px;
+      background: var(--border);
+      margin: 3px 4px;
+      align-self: stretch;
+    }
+
     /* ── 에디터 ──────────────────────────────── */
     .editor-wrap {
-      padding: 16px 24px 12px;
+      padding: 14px 24px 10px;
       border-bottom: 1px solid var(--border);
     }
 
-    textarea {
+    .editor-main {
+      display: flex;
+      flex-direction: column;
+    }
+
+    textarea#input {
       width: 100%;
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 0 0 8px 8px;
       color: var(--text);
       font-family: 'Noto Sans KR', sans-serif;
       font-size: 14px;
       line-height: 1.7;
       padding: 12px 14px;
       resize: none;
-      min-height: 90px;
+      min-height: 100px;
       outline: none;
       transition: border-color 0.2s;
       margin-bottom: 8px;
     }
 
-    textarea:focus { border-color: var(--accent); }
-    textarea::placeholder { color: var(--text-muted); }
+    textarea#input:focus { border-color: var(--accent); }
+    textarea#input::placeholder { color: var(--text-muted); }
 
     .editor-footer {
       display: flex;
@@ -209,6 +249,12 @@
     .save-status.saving { color: var(--accent); }
     .save-status.saved  { color: var(--success); }
     .save-status.error  { color: var(--danger); }
+
+    .hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
 
     .new-note-btn {
       background: var(--surface2);
@@ -294,13 +340,94 @@
     .note-card:hover { border-color: #3e3e3e; background: var(--surface2); }
     .note-card.editing { border-color: var(--accent); }
 
-    .note-preview {
-      font-size: 14px;
-      line-height: 1.7;
-      white-space: pre-wrap;
+    /* ── 마크다운 렌더링 ─────────────────────── */
+    .note-preview { font-size: 14px; line-height: 1.7; word-break: break-all; }
+
+    .note-preview h1 { font-size: 18px; font-weight: 700; margin: 6px 0 4px; }
+    .note-preview h2 { font-size: 16px; font-weight: 600; margin: 5px 0 3px; }
+    .note-preview h3 { font-size: 15px; font-weight: 600; margin: 4px 0 2px; }
+    .note-preview strong { font-weight: 700; color: #fff; }
+    .note-preview em { font-style: italic; color: #ccc; }
+    .note-preview del { text-decoration: line-through; color: var(--text-muted); }
+    .note-preview p { margin: 3px 0; }
+
+    .note-preview code {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: #f0a500;
+    }
+
+    .note-preview pre {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      overflow-x: auto;
+      margin: 8px 0;
+    }
+
+    .note-preview pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .note-preview ul, .note-preview ol {
+      padding-left: 20px;
+      margin: 4px 0;
+    }
+
+    .note-preview li { margin: 3px 0; }
+
+    .note-preview li.task-item {
+      list-style: none;
+      margin-left: -16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+
+    .note-preview .task-cb {
+      margin-top: 4px;
+      accent-color: var(--accent);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .note-preview a {
+      color: var(--accent);
+      text-decoration: underline;
       word-break: break-all;
     }
 
+    .note-preview img {
+      max-width: 100%;
+      border-radius: 8px;
+      margin: 8px 0;
+      display: block;
+    }
+
+    .note-preview blockquote {
+      border-left: 3px solid var(--accent);
+      padding-left: 12px;
+      color: var(--text-muted);
+      margin: 8px 0;
+      font-style: italic;
+    }
+
+    .note-preview hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 10px 0;
+    }
+
+    /* ── 노트 카드 하단 ──────────────────────── */
     .note-edit-area {
       width: 100%;
       background: transparent;
@@ -371,19 +498,13 @@
     @media (max-width: 600px) {
       header { padding: 12px 16px; }
       .user-email { display: none; }
-      .editor-wrap { padding: 12px 16px 10px; }
+      .editor-wrap { padding: 10px 16px 8px; }
       .toolbar { padding: 8px 16px; }
       .notes { padding: 12px 16px; }
-      textarea { min-height: 80px; font-size: 15px; }
+      .fmt-btn { padding: 4px 6px; min-width: 24px; }
+      .hint { display: none; }
     }
   </style>
-  <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#f0a500">
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js');
-  }
-</script>
 </head>
 <body>
 
@@ -392,18 +513,14 @@
   <div class="auth-box">
     <div class="auth-logo">📝 노트</div>
     <div class="auth-sub">어디서든 내 노트를 꺼내요</div>
-
     <div class="auth-tabs">
       <button class="auth-tab active" onclick="switchTab('login')">로그인</button>
       <button class="auth-tab" onclick="switchTab('signup')">회원가입</button>
     </div>
-
     <label class="auth-label">이메일</label>
     <input class="auth-input" id="authEmail" type="email" placeholder="you@example.com">
-
     <label class="auth-label">비밀번호</label>
     <input class="auth-input" id="authPw" type="password" placeholder="6자 이상">
-
     <button class="auth-btn" id="authBtn" onclick="doAuth()">로그인</button>
     <div class="auth-error" id="authError"></div>
   </div>
@@ -419,7 +536,35 @@
   </header>
 
   <div class="editor-wrap">
-    <textarea id="input" placeholder="지금 바로 입력하세요...&#10;2초 후 자동으로 저장됩니다"></textarea>
+    <div class="editor-main">
+
+      <!-- 서식 툴바 -->
+      <div class="fmt-toolbar">
+        <button class="fmt-btn" onclick="fmt('bold')"    title="굵게 (Ctrl+B)"><b>B</b></button>
+        <button class="fmt-btn" onclick="fmt('italic')"  title="기울임 (Ctrl+I)"><i>I</i></button>
+        <button class="fmt-btn" onclick="fmt('strike')"  title="취소선"><s>S</s></button>
+        <div class="fmt-sep"></div>
+        <button class="fmt-btn" onclick="fmt('h1')"      title="제목">H1</button>
+        <button class="fmt-btn" onclick="fmt('h2')"      title="소제목">H2</button>
+        <div class="fmt-sep"></div>
+        <button class="fmt-btn" onclick="fmt('check')"   title="체크리스트">☑</button>
+        <button class="fmt-btn" onclick="fmt('ul')"      title="목록">≡</button>
+        <div class="fmt-sep"></div>
+        <button class="fmt-btn" onclick="fmt('code')"    title="인라인 코드"><code style="font-size:11px">`c`</code></button>
+        <button class="fmt-btn" onclick="fmt('codeblock')" title="코드블록">```</button>
+        <button class="fmt-btn" onclick="fmt('quote')"   title="인용">"</button>
+        <div class="fmt-sep"></div>
+        <button class="fmt-btn" onclick="document.getElementById('imgInput').click()" title="이미지">🖼</button>
+        <input type="file" id="imgInput" accept="image/*" style="display:none" onchange="insertImage(this)">
+        <div class="fmt-sep"></div>
+        <span class="hint" style="font-size:11px; color:var(--text-muted); align-self:center; margin-left:4px">Ctrl+B/I | **굵게** *기울임* ~~취소~~ # 제목</span>
+      </div>
+
+      <!-- 텍스트 입력 -->
+      <textarea id="input" placeholder="지금 바로 입력하세요...&#10;2초 후 자동 저장됩니다"></textarea>
+
+    </div>
+
     <div class="editor-footer">
       <span class="char-count" id="charCount">0자</span>
       <span class="save-status" id="saveStatus"></span>
@@ -439,10 +584,26 @@
 <div class="toast" id="toast"></div>
 
 <script>
+  // ── Supabase 초기화 ──────────────────────────────────────
   const SUPABASE_URL = 'https://fiilawtgnsygjijfucpe.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_klauYsbGxSWPZYIi1rMGmA_QgVpBT8r';
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+  // ── marked.js 설정 ───────────────────────────────────────
+  marked.use({
+    breaks: true,
+    gfm: true,
+    renderer: {
+      listitem(item) {
+        if (item.task) {
+          return `<li class="task-item"><input type="checkbox" class="task-cb" ${item.checked ? 'checked' : ''}>${item.text}</li>`;
+        }
+        return `<li>${item.text}</li>`;
+      }
+    }
+  });
+
+  // ── 상태 ────────────────────────────────────────────────
   let notes         = [];
   let sortNewest    = true;
   let currentUser   = null;
@@ -454,69 +615,140 @@
   const charCount  = document.getElementById('charCount');
   const saveStatus = document.getElementById('saveStatus');
 
-  // ── Auth 탭 전환 ─────────────────────────────────────────
-  function switchTab(mode) {
-    isLoginMode = (mode === 'login');
-    document.querySelectorAll('.auth-tab').forEach((t, i) =>
-      t.classList.toggle('active', isLoginMode ? i === 0 : i === 1)
-    );
-    document.getElementById('authBtn').textContent = isLoginMode ? '로그인' : '회원가입';
-    document.getElementById('authError').textContent = '';
+  // ── 서식 툴바 ────────────────────────────────────────────
+  function fmt(type) {
+    const start    = input.selectionStart;
+    const end      = input.selectionEnd;
+    const selected = input.value.substring(start, end);
+    const before   = input.value.substring(0, start);
+    const after    = input.value.substring(end);
+
+    const lineStart = before.lastIndexOf('\n') + 1;
+    const atLineStart = before.substring(lineStart).trim() === '';
+
+    let insert = '';
+    let caretBack = 0;
+
+    switch (type) {
+      case 'bold':
+        insert = `**${selected || '굵은 텍스트'}**`;
+        if (!selected) caretBack = 2;
+        break;
+      case 'italic':
+        insert = `*${selected || '기울임 텍스트'}*`;
+        if (!selected) caretBack = 1;
+        break;
+      case 'strike':
+        insert = `~~${selected || '취소선 텍스트'}~~`;
+        if (!selected) caretBack = 2;
+        break;
+      case 'h1':
+        insert = (atLineStart ? '' : '\n') + `# ${selected || '제목'}`;
+        break;
+      case 'h2':
+        insert = (atLineStart ? '' : '\n') + `## ${selected || '소제목'}`;
+        break;
+      case 'check':
+        insert = (atLineStart ? '' : '\n') + `- [ ] ${selected || '할 일'}`;
+        break;
+      case 'ul':
+        insert = (atLineStart ? '' : '\n') + `- ${selected || '항목'}`;
+        break;
+      case 'code':
+        insert = `\`${selected || 'code'}\``;
+        if (!selected) caretBack = 1;
+        break;
+      case 'codeblock':
+        insert = `\n\`\`\`\n${selected || '코드를 입력하세요'}\n\`\`\`\n`;
+        break;
+      case 'quote':
+        insert = (atLineStart ? '' : '\n') + `> ${selected || '인용문'}`;
+        break;
+    }
+
+    input.value = before + insert + after;
+    const newPos = start + insert.length - caretBack;
+    input.selectionStart = input.selectionEnd = newPos;
+    input.focus();
+    input.dispatchEvent(new Event('input'));
   }
 
-  // ── 로그인 / 회원가입 ────────────────────────────────────
-  async function doAuth() {
-    const email = document.getElementById('authEmail').value.trim();
-    const pw    = document.getElementById('authPw').value;
-    const btn   = document.getElementById('authBtn');
-    const errEl = document.getElementById('authError');
-
-    if (!email || !pw) { errEl.textContent = '이메일과 비밀번호를 입력해주세요'; return; }
-    if (pw.length < 6)  { errEl.textContent = '비밀번호는 6자 이상이어야 해요'; return; }
-
-    btn.disabled = true;
-    btn.textContent = '처리 중...';
-    errEl.textContent = '';
-
-    const { error } = isLoginMode
-      ? await sb.auth.signInWithPassword({ email, password: pw })
-      : await sb.auth.signUp({ email, password: pw });
-
-    btn.disabled = false;
-    btn.textContent = isLoginMode ? '로그인' : '회원가입';
-
-    if (error) {
-      errEl.textContent = error.message.includes('Invalid')
-        ? '이메일 또는 비밀번호가 틀렸어요'
-        : error.message;
+  // ── 이미지 삽입 ──────────────────────────────────────────
+  function insertImage(fileInput) {
+    const file = fileInput.files[0];
+    if (!file) return;
+    if (file.size > 1000000) {
+      showToast('이미지는 1MB 이하만 가능해요', true);
+      fileInput.value = '';
+      return;
     }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const md = `\n![이미지](${e.target.result})\n`;
+      const pos = input.selectionStart;
+      input.value = input.value.substring(0, pos) + md + input.value.substring(pos);
+      input.selectionStart = input.selectionEnd = pos + md.length;
+      input.focus();
+      input.dispatchEvent(new Event('input'));
+    };
+    reader.readAsDataURL(file);
+    fileInput.value = '';
   }
 
-  document.getElementById('authPw').addEventListener('keydown', e => {
-    if (e.key === 'Enter') doAuth();
-  });
-
-  // ── 로그아웃 ─────────────────────────────────────────────
-  async function logout() { await sb.auth.signOut(); }
-
-  // ── Auth 상태 감지 ───────────────────────────────────────
-  sb.auth.onAuthStateChange((event, session) => {
-    if (session?.user) {
-      currentUser = session.user;
-      document.getElementById('userEmail').textContent = currentUser.email;
-      document.getElementById('authScreen').style.display = 'none';
-      document.getElementById('app').style.display = 'flex';
-      loadNotes();
-    } else {
-      currentUser = null;
-      notes = [];
-      currentNoteId = null;
-      document.getElementById('authScreen').style.display = 'flex';
-      document.getElementById('app').style.display = 'none';
+  // ── 이미지 붙여넣기 (Ctrl+V) ─────────────────────────────
+  input.addEventListener('paste', e => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file.size > 1000000) { showToast('이미지는 1MB 이하만 가능해요', true); return; }
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const md = `\n![이미지](${ev.target.result})\n`;
+          const pos = input.selectionStart;
+          input.value = input.value.substring(0, pos) + md + input.value.substring(pos);
+          input.dispatchEvent(new Event('input'));
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
     }
   });
 
-  // ── 자동저장 상태 ────────────────────────────────────────
+  // ── 키보드 단축키 ────────────────────────────────────────
+  input.addEventListener('keydown', e => {
+    if (e.ctrlKey && e.key === 'Enter') { autoSave(); return; }
+    if (e.ctrlKey && e.key === 'b') { e.preventDefault(); fmt('bold'); return; }
+    if (e.ctrlKey && e.key === 'i') { e.preventDefault(); fmt('italic'); return; }
+
+    // Tab → 들여쓰기
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const s = input.selectionStart;
+      input.value = input.value.substring(0, s) + '  ' + input.value.substring(s);
+      input.selectionStart = input.selectionEnd = s + 2;
+      return;
+    }
+
+    // Enter 후 체크리스트 자동 추가
+    if (e.key === 'Enter') {
+      const pos    = input.selectionStart;
+      const text   = input.value.substring(0, pos);
+      const lines  = text.split('\n');
+      const lastLine = lines[lines.length - 1];
+      if (/^- \[ \] /.test(lastLine) && lastLine.trim() !== '- [ ]') {
+        e.preventDefault();
+        const ins = '\n- [ ] ';
+        input.value = input.value.substring(0, pos) + ins + input.value.substring(pos);
+        input.selectionStart = input.selectionEnd = pos + ins.length;
+        input.dispatchEvent(new Event('input'));
+      }
+    }
+  });
+
+  // ── 자동저장 ─────────────────────────────────────────────
   function setStatus(state) {
     const map = {
       '':      ['', ''],
@@ -530,7 +762,6 @@
     saveStatus.textContent = text;
   }
 
-  // ── 자동저장 debounce 2초 ────────────────────────────────
   input.addEventListener('input', () => {
     charCount.textContent = input.value.length + '자';
     clearTimeout(autoSaveTimer);
@@ -545,33 +776,28 @@
   async function autoSave() {
     const text = input.value.trim();
     if (!text || !currentUser) return;
-
     setStatus('saving');
-    const title = text.split('\n')[0].slice(0, 50);
+    const title = text.replace(/[#*`~>_\[\]!]/g, '').split('\n')[0].trim().slice(0, 50);
 
     if (!currentNoteId) {
-      const { data, error } = await sb
-        .from('notes')
+      const { data, error } = await sb.from('notes')
         .insert([{ title, content: text, user_id: currentUser.id }])
         .select().single();
       if (error) { setStatus('error'); return; }
       currentNoteId = data.id;
       notes.unshift(data);
     } else {
-      const { data, error } = await sb
-        .from('notes')
+      const { data, error } = await sb.from('notes')
         .update({ title, content: text, updated_at: new Date().toISOString() })
         .eq('id', currentNoteId).select().single();
       if (error) { setStatus('error'); return; }
       const idx = notes.findIndex(n => n.id === currentNoteId);
       if (idx !== -1) notes[idx] = data;
     }
-
     setStatus('saved');
     renderNotes();
   }
 
-  // ── 새 노트 ──────────────────────────────────────────────
   function newNote() {
     clearTimeout(autoSaveTimer);
     currentNoteId = null;
@@ -581,10 +807,25 @@
     input.focus();
   }
 
+  // ── 체크박스 토글 ────────────────────────────────────────
+  async function toggleCheck(noteId, idx) {
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
+    let count = 0;
+    note.content = note.content.replace(/- \[(x| )\] /g, match => {
+      if (count++ === idx) return match.includes('x') ? '- [ ] ' : '- [x] ';
+      return match;
+    });
+    const title = note.content.replace(/[#*`~>_\[\]!]/g, '').split('\n')[0].trim().slice(0, 50);
+    await sb.from('notes')
+      .update({ title, content: note.content, updated_at: new Date().toISOString() })
+      .eq('id', noteId);
+    renderNotes();
+  }
+
   // ── 노트 불러오기 ────────────────────────────────────────
   async function loadNotes() {
-    const { data, error } = await sb
-      .from('notes').select('*').order('created_at', { ascending: false });
+    const { data, error } = await sb.from('notes').select('*').order('created_at', { ascending: false });
     if (error) { showToast('불러오기 실패', true); return; }
     notes = data;
     renderNotes();
@@ -626,19 +867,12 @@
     saveEl.textContent = '저장 중...';
     saveEl.disabled = true;
 
-    const title = text.split('\n')[0].slice(0, 50);
-    const { data, error } = await sb
-      .from('notes')
+    const title = text.replace(/[#*`~>_\[\]!]/g, '').split('\n')[0].trim().slice(0, 50);
+    const { data, error } = await sb.from('notes')
       .update({ title, content: text, updated_at: new Date().toISOString() })
       .eq('id', id).select().single();
 
-    if (error) {
-      showToast('수정 실패', true);
-      saveEl.textContent = '저장';
-      saveEl.disabled = false;
-      return;
-    }
-
+    if (error) { showToast('수정 실패', true); saveEl.textContent = '저장'; saveEl.disabled = false; return; }
     const idx = notes.findIndex(n => n.id === id);
     if (idx !== -1) notes[idx] = data;
     renderNotes();
@@ -652,7 +886,7 @@
     renderNotes();
   }
 
-  // ── 유틸 ────────────────────────────────────────────────
+  // ── 렌더링 ──────────────────────────────────────────────
   function formatDate(iso) {
     if (!iso) return '';
     const d = new Date(iso), diff = Date.now() - d;
@@ -662,11 +896,15 @@
     return d.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
+  function renderContent(text) {
+    if (!text) return '';
+    try { return marked.parse(text); } catch { return text; }
+  }
+
   function escHtml(t) {
     return (t || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  // ── 렌더링 ──────────────────────────────────────────────
   function renderNotes() {
     const q = document.getElementById('search').value.toLowerCase();
     let filtered = notes.filter(n => (n.content || '').toLowerCase().includes(q));
@@ -685,7 +923,7 @@
 
     container.innerHTML = filtered.map(n => `
       <div class="note-card" data-id="${n.id}">
-        <div class="note-preview">${escHtml(n.content)}</div>
+        <div class="note-preview">${renderContent(n.content)}</div>
         <textarea class="note-edit-area" rows="4">${escHtml(n.content)}</textarea>
         <div class="note-footer">
           <div class="note-date">
@@ -700,6 +938,14 @@
         </div>
       </div>
     `).join('');
+
+    // 체크박스 인터랙티브 처리
+    container.querySelectorAll('.note-card').forEach(card => {
+      const noteId = card.dataset.id;
+      card.querySelectorAll('.task-cb').forEach((cb, idx) => {
+        cb.addEventListener('change', () => toggleCheck(noteId, idx));
+      });
+    });
   }
 
   // ── 토스트 ──────────────────────────────────────────────
@@ -710,6 +956,52 @@
     clearTimeout(t._timer);
     t._timer = setTimeout(() => t.className = 'toast', 2500);
   }
+
+  // ── Auth ─────────────────────────────────────────────────
+  function switchTab(mode) {
+    isLoginMode = (mode === 'login');
+    document.querySelectorAll('.auth-tab').forEach((t, i) =>
+      t.classList.toggle('active', isLoginMode ? i === 0 : i === 1)
+    );
+    document.getElementById('authBtn').textContent = isLoginMode ? '로그인' : '회원가입';
+    document.getElementById('authError').textContent = '';
+  }
+
+  async function doAuth() {
+    const email = document.getElementById('authEmail').value.trim();
+    const pw    = document.getElementById('authPw').value;
+    const btn   = document.getElementById('authBtn');
+    const errEl = document.getElementById('authError');
+    if (!email || !pw) { errEl.textContent = '이메일과 비밀번호를 입력해주세요'; return; }
+    if (pw.length < 6)  { errEl.textContent = '비밀번호는 6자 이상이어야 해요'; return; }
+    btn.disabled = true; btn.textContent = '처리 중...'; errEl.textContent = '';
+    const { error } = isLoginMode
+      ? await sb.auth.signInWithPassword({ email, password: pw })
+      : await sb.auth.signUp({ email, password: pw });
+    btn.disabled = false;
+    btn.textContent = isLoginMode ? '로그인' : '회원가입';
+    if (error) errEl.textContent = error.message.includes('Invalid') ? '이메일 또는 비밀번호가 틀렸어요' : error.message;
+  }
+
+  document.getElementById('authPw').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doAuth();
+  });
+
+  async function logout() { await sb.auth.signOut(); }
+
+  sb.auth.onAuthStateChange((event, session) => {
+    if (session?.user) {
+      currentUser = session.user;
+      document.getElementById('userEmail').textContent = currentUser.email;
+      document.getElementById('authScreen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      loadNotes();
+    } else {
+      currentUser = null; notes = []; currentNoteId = null;
+      document.getElementById('authScreen').style.display = 'flex';
+      document.getElementById('app').style.display = 'none';
+    }
+  });
 </script>
 </body>
 </html>
