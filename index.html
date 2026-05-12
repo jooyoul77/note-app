@@ -32,60 +32,41 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      transition: background 0.3s;
     }
 
     /* ── 로그인 ──────────────────────────────── */
     #authScreen {
       min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
     }
-
     .auth-box {
-      width: 100%;
-      max-width: 360px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 32px 28px;
+      width: 100%; max-width: 360px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 32px 28px;
     }
-
     .auth-logo { font-size: 22px; font-weight: 500; margin-bottom: 6px; }
     .auth-sub  { font-size: 13px; color: var(--text-muted); margin-bottom: 28px; }
-
     .auth-tabs {
-      display: flex;
-      background: var(--surface2);
-      border-radius: 8px;
-      padding: 3px;
-      margin-bottom: 22px;
+      display: flex; background: var(--surface2); border-radius: 8px; padding: 3px; margin-bottom: 22px;
     }
-
     .auth-tab {
-      flex: 1; background: none; border: none;
-      border-radius: 6px; color: var(--text-muted);
-      font-family: 'Noto Sans KR', sans-serif;
+      flex: 1; background: none; border: none; border-radius: 6px;
+      color: var(--text-muted); font-family: 'Noto Sans KR', sans-serif;
       font-size: 13px; padding: 7px; cursor: pointer; transition: all 0.2s;
     }
     .auth-tab.active { background: var(--surface); color: var(--text); font-weight: 500; }
-
     .auth-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; display: block; }
-
     .auth-input {
       width: 100%; background: var(--surface2); border: 1px solid var(--border);
       border-radius: 8px; color: var(--text); font-family: 'Noto Sans KR', sans-serif;
-      font-size: 14px; padding: 11px 14px; outline: none; margin-bottom: 14px;
-      transition: border-color 0.2s;
+      font-size: 14px; padding: 11px 14px; outline: none; margin-bottom: 14px; transition: border-color 0.2s;
     }
     .auth-input:focus { border-color: var(--accent); }
-
     .auth-btn {
       width: 100%; background: var(--accent); color: #000; border: none;
       border-radius: 8px; font-family: 'Noto Sans KR', sans-serif;
-      font-size: 14px; font-weight: 700; padding: 12px; cursor: pointer;
-      margin-top: 4px; transition: opacity 0.2s;
+      font-size: 14px; font-weight: 700; padding: 12px; cursor: pointer; margin-top: 4px; transition: opacity 0.2s;
     }
     .auth-btn:hover { opacity: 0.85; }
     .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -95,39 +76,82 @@
     #app { display: none; flex-direction: column; min-height: 100vh; }
 
     header {
-      padding: 14px 24px;
+      padding: 13px 20px;
       border-bottom: 1px solid var(--border);
       display: flex; align-items: center; gap: 10px;
       position: sticky; top: 0; z-index: 10;
       background: var(--bg);
     }
-
-    header h1 { font-size: 17px; font-weight: 500; }
-
+    header h1 { font-size: 16px; font-weight: 500; }
     .badge {
       font-size: 10px; background: var(--accent); color: #000;
       padding: 2px 7px; border-radius: 20px; font-weight: 700;
     }
-
     .user-email {
       font-size: 12px; color: var(--text-muted); margin-left: auto;
-      max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
 
-    .logout-btn {
-      background: none; border: 1px solid var(--border); border-radius: 6px;
-      color: var(--text-muted); font-family: 'Noto Sans KR', sans-serif;
-      font-size: 11px; padding: 4px 10px; cursor: pointer; transition: color 0.2s, border-color 0.2s;
+    /* 헤더 아이콘 버튼 */
+    .icon-btn {
+      background: none; border: 1px solid var(--border); border-radius: 7px;
+      color: var(--text-muted); font-size: 15px; padding: 5px 9px;
+      cursor: pointer; transition: color 0.2s, border-color 0.2s;
+      line-height: 1;
     }
-    .logout-btn:hover { color: var(--danger); border-color: var(--danger); }
+    .icon-btn:hover { color: var(--text); border-color: var(--text-muted); }
+
+    /* ── 테마 패널 ───────────────────────────── */
+    .theme-panel {
+      position: absolute; top: 56px; right: 20px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px;
+      width: 260px; z-index: 50;
+      display: none;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .theme-panel.open { display: block; }
+
+    .panel-label {
+      font-size: 11px; color: var(--text-muted); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;
+    }
+
+    .theme-presets {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;
+    }
+
+    .theme-swatch {
+      width: 36px; height: 36px; border-radius: 10px;
+      border: 2px solid transparent; cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s;
+      position: relative;
+    }
+    .theme-swatch:hover { transform: scale(1.1); }
+    .theme-swatch.active { border-color: var(--accent); }
+    .theme-swatch .check {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 14px; opacity: 0;
+    }
+    .theme-swatch.active .check { opacity: 1; }
+
+    .custom-color-row {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+    }
+    .custom-color-label { font-size: 12px; color: var(--text-muted); flex: 1; }
+    .color-input-wrap { position: relative; }
+    input[type="color"] {
+      width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border);
+      cursor: pointer; background: none; padding: 2px;
+    }
+
+    .panel-divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
 
     /* ── 검색 툴바 ───────────────────────────── */
     .toolbar {
-      padding: 10px 24px;
-      display: flex; gap: 8px; align-items: center;
+      padding: 10px 20px; display: flex; gap: 8px; align-items: center;
       border-bottom: 1px solid var(--border);
     }
-
     .search {
       flex: 1; background: var(--surface); border: 1px solid var(--border);
       border-radius: 8px; color: var(--text); font-family: 'Noto Sans KR', sans-serif;
@@ -135,10 +159,9 @@
     }
     .search:focus { border-color: var(--accent); }
     .search::placeholder { color: var(--text-muted); }
-
     .sort-btn {
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 8px; color: var(--text-muted); font-family: 'Noto Sans KR', sans-serif;
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text-muted); font-family: 'Noto Sans KR', sans-serif;
       font-size: 12px; padding: 7px 12px; cursor: pointer; transition: color 0.2s;
     }
     .sort-btn:hover { color: var(--text); }
@@ -147,88 +170,61 @@
     /* ── 노트 목록 ───────────────────────────── */
     .notes {
       flex: 1; overflow-y: auto;
-      padding: 14px 24px 100px;
+      padding: 12px 20px 100px;
       display: flex; flex-direction: column; gap: 8px;
     }
-
     .empty {
       text-align: center; color: var(--text-muted);
       font-size: 14px; margin-top: 80px; line-height: 2.4;
     }
 
-    /* ── 노트 카드 (접힌 상태) ───────────────── */
+    /* ── 노트 카드 ───────────────────────────── */
     .note-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      transition: border-color 0.2s;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden;
+      transition: border-color 0.2s, transform 0.15s;
+      border-left-width: 4px;
     }
-
-    .note-card:hover { border-color: #3e3e3e; }
-    .note-card.open  { border-color: var(--accent); }
+    .note-card:hover { transform: translateX(2px); }
+    .note-card.open  { border-color: var(--accent); border-left-color: inherit; }
 
     .note-card-header {
       display: flex; align-items: center;
-      padding: 14px 16px;
-      cursor: pointer;
-      gap: 12px;
-      user-select: none;
+      padding: 13px 16px; cursor: pointer; gap: 12px; user-select: none;
     }
-
     .note-card-header:hover { background: var(--surface2); }
 
     .note-icon {
-      font-size: 18px;
-      flex-shrink: 0;
-      width: 32px; height: 32px;
-      background: var(--surface2);
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+      width: 30px; height: 30px; background: var(--surface2);
+      border-radius: 7px; display: flex; align-items: center; justify-content: center;
     }
 
     .note-card-info { flex: 1; min-width: 0; }
-
     .note-card-title {
       font-size: 14px; font-weight: 500;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      margin-bottom: 3px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px;
     }
-
     .note-card-meta {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 11px; color: var(--text-muted);
+      display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-muted);
     }
-
     .note-char-count {
-      background: var(--surface2);
-      border-radius: 4px;
-      padding: 1px 6px;
-      font-size: 10px;
+      background: var(--surface2); border-radius: 4px; padding: 1px 6px; font-size: 10px;
     }
-
     .note-expand-btn {
-      font-size: 16px; color: var(--text-muted);
-      transition: transform 0.25s;
-      flex-shrink: 0;
+      font-size: 18px; color: var(--text-muted); transition: transform 0.25s; flex-shrink: 0;
     }
-
     .note-card.open .note-expand-btn { transform: rotate(45deg); color: var(--accent); }
 
-    /* ── 노트 카드 (펼친 상태) ───────────────── */
     .note-card-body {
-      display: none;
-      border-top: 1px solid var(--border);
-      padding: 16px;
+      display: none; border-top: 1px solid var(--border); padding: 16px;
     }
-
     .note-card.open .note-card-body { display: block; }
 
     /* ── 마크다운 렌더링 ─────────────────────── */
     .note-preview { font-size: 14px; line-height: 1.8; word-break: break-word; }
     .note-preview h1 { font-size: 18px; font-weight: 700; margin: 8px 0 4px; }
     .note-preview h2 { font-size: 16px; font-weight: 600; margin: 6px 0 3px; }
-    .note-preview h3 { font-size: 15px; font-weight: 600; margin: 4px 0 2px; }
     .note-preview strong { font-weight: 700; color: #fff; }
     .note-preview em { font-style: italic; color: #ccc; }
     .note-preview del { text-decoration: line-through; color: var(--text-muted); }
@@ -250,131 +246,113 @@
     .note-preview a { color: var(--accent); text-decoration: underline; word-break: break-all; }
     .note-preview img { max-width: 100%; border-radius: 8px; margin: 8px 0; display: block; }
     .note-preview blockquote { border-left: 3px solid var(--accent); padding-left: 12px; color: var(--text-muted); margin: 8px 0; font-style: italic; }
-    .note-preview hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
 
     .note-card-actions {
       display: flex; gap: 8px; margin-top: 14px;
-      padding-top: 12px; border-top: 1px solid var(--border);
-      justify-content: flex-end;
+      padding-top: 12px; border-top: 1px solid var(--border); justify-content: flex-end;
     }
-
     .action-btn {
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 6px; color: var(--text-muted);
-      font-size: 12px; padding: 5px 12px; cursor: pointer;
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text-muted); font-size: 12px; padding: 5px 12px; cursor: pointer;
       font-family: 'Noto Sans KR', sans-serif; transition: color 0.2s, border-color 0.2s;
     }
     .action-btn:hover { color: var(--text); border-color: #4e4e4e; }
     .action-btn.del:hover { color: var(--danger); border-color: var(--danger); }
     .action-btn.edit { color: var(--accent); border-color: var(--accent); }
 
-    /* ── FAB (새 노트 버튼) ─────────────────── */
+    /* ── FAB ─────────────────────────────────── */
     .fab {
       position: fixed; bottom: 28px; right: 24px;
-      width: 56px; height: 56px;
-      background: var(--accent); color: #000;
-      border: none; border-radius: 50%;
-      font-size: 28px; font-weight: 300;
-      cursor: pointer; z-index: 80;
-      box-shadow: 0 4px 20px rgba(240,165,0,0.35);
+      width: 56px; height: 56px; background: var(--accent); color: #000;
+      border: none; border-radius: 50%; font-size: 28px; cursor: pointer;
+      z-index: 80; box-shadow: 0 4px 20px rgba(240,165,0,0.35);
       transition: transform 0.2s, box-shadow 0.2s;
       display: flex; align-items: center; justify-content: center;
     }
-    .fab:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(240,165,0,0.5); }
+    .fab:hover { transform: scale(1.08); }
     .fab:active { transform: scale(0.95); }
 
     /* ── 모달 ────────────────────────────────── */
     .modal-overlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.75);
-      z-index: 100;
-      display: none;
-      align-items: center; justify-content: center;
-      padding: 20px;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+      z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px;
     }
     .modal-overlay.open { display: flex; }
 
     .modal-box {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      width: 100%; max-width: 720px;
-      height: 80vh;
-      display: flex; flex-direction: column;
-      overflow: hidden;
-      resize: both; /* 크기 조절 */
-      min-width: 340px; min-height: 300px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; width: 100%; max-width: 720px; height: 80vh;
+      display: flex; flex-direction: column; overflow: hidden;
+      resize: both; min-width: 340px; min-height: 300px;
     }
 
     .modal-header {
-      padding: 14px 18px;
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; gap: 10px;
-      flex-shrink: 0;
+      padding: 13px 16px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px; flex-shrink: 0;
     }
-
-    .modal-title {
-      font-size: 14px; font-weight: 500; flex: 1; color: var(--text-muted);
-    }
-
-    .modal-status {
-      font-size: 12px; transition: color 0.3s;
-    }
+    .modal-title { font-size: 14px; font-weight: 500; flex: 1; color: var(--text-muted); }
+    .modal-status { font-size: 12px; transition: color 0.3s; }
     .modal-status.saving { color: var(--accent); }
     .modal-status.saved  { color: var(--success); }
     .modal-status.error  { color: var(--danger); }
-
     .modal-close {
       background: none; border: none; color: var(--text-muted);
       font-size: 20px; cursor: pointer; padding: 4px 8px;
-      border-radius: 6px; transition: color 0.2s, background 0.2s;
-      line-height: 1;
+      border-radius: 6px; transition: color 0.2s, background 0.2s; line-height: 1;
     }
     .modal-close:hover { color: var(--text); background: var(--surface2); }
 
-    /* ── 서식 툴바 (모달) ────────────────────── */
+    /* ── 서식 툴바 ───────────────────────────── */
     .fmt-toolbar {
       display: flex; gap: 2px; flex-wrap: wrap;
-      padding: 6px 10px;
-      background: var(--surface2);
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
+      padding: 6px 10px; background: var(--surface2);
+      border-bottom: 1px solid var(--border); flex-shrink: 0; align-items: center;
     }
-
     .fmt-btn {
       background: none; border: none; color: var(--text-muted);
-      font-family: 'Noto Sans KR', sans-serif;
-      font-size: 12px; padding: 4px 8px;
+      font-family: 'Noto Sans KR', sans-serif; font-size: 12px; padding: 4px 8px;
       border-radius: 4px; cursor: pointer; transition: background 0.15s, color 0.15s;
       min-width: 28px; text-align: center; line-height: 1.5;
     }
     .fmt-btn:hover { background: var(--border); color: var(--text); }
     .fmt-sep { width: 1px; background: var(--border); margin: 3px 4px; align-self: stretch; }
 
-    /* ── 모달 텍스트 영역 ────────────────────── */
-    .modal-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+    /* 노트 색상 선택 */
+    .note-color-picker {
+      display: flex; gap: 5px; align-items: center; margin-left: auto;
+    }
+    .note-color-dot {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid transparent; cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s;
+      flex-shrink: 0;
+    }
+    .note-color-dot:hover { transform: scale(1.2); }
+    .note-color-dot.active { border-color: var(--text); }
+    .note-color-dot.default { background: var(--surface); border-color: var(--border); font-size: 10px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
+    .note-color-custom {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid var(--border); cursor: pointer; overflow: hidden;
+    }
+    .note-color-custom input[type="color"] {
+      width: 24px; height: 24px; border: none; padding: 0; margin: -3px;
+      cursor: pointer; background: none;
+    }
 
+    /* ── 모달 텍스트 ─────────────────────────── */
+    .modal-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
     #modalInput {
-      flex: 1; width: 100%;
-      background: transparent;
-      border: none; outline: none;
-      color: var(--text);
-      font-family: 'Noto Sans KR', sans-serif;
-      font-size: 15px; line-height: 1.8;
-      padding: 18px 20px;
-      resize: none;
+      flex: 1; width: 100%; background: transparent; border: none; outline: none;
+      color: var(--text); font-family: 'Noto Sans KR', sans-serif;
+      font-size: 15px; line-height: 1.8; padding: 18px 20px; resize: none;
     }
     #modalInput::placeholder { color: var(--text-muted); }
 
     .modal-footer {
-      padding: 10px 18px;
-      border-top: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-      flex-shrink: 0;
+      padding: 10px 16px; border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
     }
-
     .modal-char { font-size: 11px; color: var(--text-muted); }
-
     .modal-hint { font-size: 11px; color: var(--text-muted); opacity: 0.6; }
 
     /* ── 토스트 ──────────────────────────────── */
@@ -390,12 +368,14 @@
 
     /* ── 모바일 ──────────────────────────────── */
     @media (max-width: 600px) {
-      header { padding: 12px 16px; }
+      header { padding: 11px 14px; }
       .user-email { display: none; }
-      .toolbar { padding: 8px 16px; }
-      .notes { padding: 10px 16px 100px; }
-      .modal-box { height: 90vh; resize: none; }
+      .toolbar { padding: 8px 14px; }
+      .notes { padding: 10px 14px 100px; }
+      .modal-box { height: 92vh; resize: none; }
       .fmt-btn { padding: 4px 6px; min-width: 24px; }
+      .theme-panel { right: 10px; width: 240px; }
+      .note-color-picker { display: none; }
     }
   </style>
 </head>
@@ -425,8 +405,29 @@
     <h1>📝 노트</h1>
     <span class="badge">MVP</span>
     <span class="user-email" id="userEmail"></span>
-    <button class="logout-btn" onclick="logout()">로그아웃</button>
+    <button class="icon-btn" onclick="toggleThemePanel()" title="테마 설정">🎨</button>
+    <button class="icon-btn" onclick="logout()" title="로그아웃">↩</button>
   </header>
+
+  <!-- 테마 패널 -->
+  <div class="theme-panel" id="themePanel">
+    <div class="panel-label">앱 테마</div>
+    <div class="theme-presets" id="themePresets"></div>
+
+    <div class="custom-color-row">
+      <span class="custom-color-label">배경 직접 선택</span>
+      <div class="color-input-wrap">
+        <input type="color" id="bgColorPicker" value="#0f0f0f" oninput="applyCustomBg(this.value)" title="배경색">
+      </div>
+    </div>
+
+    <div class="custom-color-row">
+      <span class="custom-color-label">서피스 직접 선택</span>
+      <div class="color-input-wrap">
+        <input type="color" id="surfaceColorPicker" value="#1a1a1a" oninput="applyCustomSurface(this.value)" title="카드색">
+      </div>
+    </div>
+  </div>
 
   <div class="toolbar">
     <input class="search" id="search" placeholder="🔍 검색..." oninput="renderNotes()">
@@ -435,14 +436,12 @@
   </div>
 
   <div class="notes" id="notes"></div>
-
-  <!-- FAB 버튼 -->
   <button class="fab" onclick="openModal()" title="새 노트">＋</button>
 </div>
 
-<!-- ══ 노트 작성/수정 모달 ══ -->
+<!-- ══ 모달 ══ -->
 <div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
-  <div class="modal-box">
+  <div class="modal-box" id="modalBox">
 
     <div class="modal-header">
       <span class="modal-title" id="modalTitle">새 노트</span>
@@ -450,7 +449,6 @@
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
 
-    <!-- 서식 툴바 -->
     <div class="fmt-toolbar">
       <button class="fmt-btn" onclick="fmt('bold')"     title="굵게 Ctrl+B"><b>B</b></button>
       <button class="fmt-btn" onclick="fmt('italic')"   title="기울임 Ctrl+I"><i>I</i></button>
@@ -462,12 +460,15 @@
       <button class="fmt-btn" onclick="fmt('check')"    title="체크리스트">☑</button>
       <button class="fmt-btn" onclick="fmt('ul')"       title="목록">≡</button>
       <div class="fmt-sep"></div>
-      <button class="fmt-btn" onclick="fmt('code')"     title="인라인 코드"><code style="font-size:11px">`c`</code></button>
+      <button class="fmt-btn" onclick="fmt('code')"     title="코드"><code style="font-size:11px">`c`</code></button>
       <button class="fmt-btn" onclick="fmt('codeblock')" title="코드블록">```</button>
       <button class="fmt-btn" onclick="fmt('quote')"    title="인용">"</button>
       <div class="fmt-sep"></div>
       <button class="fmt-btn" onclick="document.getElementById('imgInput').click()" title="이미지">🖼</button>
       <input type="file" id="imgInput" accept="image/*" style="display:none" onchange="insertImage(this)">
+
+      <!-- 노트 색상 선택 -->
+      <div class="note-color-picker" id="noteColorPicker"></div>
     </div>
 
     <div class="modal-body">
@@ -476,9 +477,8 @@
 
     <div class="modal-footer">
       <span class="modal-char" id="modalChar">0자</span>
-      <span class="modal-hint">Ctrl+B 굵게 · Ctrl+I 기울임 · 2초 후 자동저장</span>
+      <span class="modal-hint">Ctrl+B 굵게 · Ctrl+I 기울임 · ESC 닫기</span>
     </div>
-
   </div>
 </div>
 
@@ -490,7 +490,7 @@
   const SUPABASE_KEY = 'sb_publishable_klauYsbGxSWPZYIi1rMGmA_QgVpBT8r';
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // ── marked 설정 ──────────────────────────────────────────
+  // ── marked ───────────────────────────────────────────────
   marked.use({
     breaks: true, gfm: true,
     renderer: {
@@ -501,19 +501,143 @@
     }
   });
 
+  // ── 테마 정의 ────────────────────────────────────────────
+  const THEMES = [
+    { id: 'dark',    label: '딥다크',  bg: '#0f0f0f', surface: '#1a1a1a', surface2: '#242424', border: '#2e2e2e' },
+    { id: 'darker',  label: '블랙',    bg: '#030303', surface: '#0e0e0e', surface2: '#181818', border: '#222222' },
+    { id: 'navy',    label: '네이비',  bg: '#08101e', surface: '#101c30', surface2: '#172840', border: '#243a58' },
+    { id: 'forest',  label: '포레스트',bg: '#071410', surface: '#0f2018', surface2: '#172e22', border: '#264535' },
+    { id: 'purple',  label: '퍼플',    bg: '#0d0814', surface: '#160f22', surface2: '#1e1530', border: '#2d2045' },
+    { id: 'ocean',   label: '오션',    bg: '#071520', surface: '#0d2035', surface2: '#133050', border: '#1e4068' },
+  ];
+
+  // 노트 카드 색상
+  const NOTE_COLORS = [
+    { id: 'default', color: null,      label: '기본' },
+    { id: 'red',     color: '#e05252', label: '빨강' },
+    { id: 'orange',  color: '#e07a30', label: '주황' },
+    { id: 'yellow',  color: '#d4a017', label: '노랑' },
+    { id: 'green',   color: '#3a9e5a', label: '초록' },
+    { id: 'blue',    color: '#3a7ae0', label: '파랑' },
+    { id: 'purple',  color: '#9b52e0', label: '보라' },
+  ];
+
   // ── 상태 ────────────────────────────────────────────────
   let notes         = [];
   let sortNewest    = true;
   let currentUser   = null;
   let currentNoteId = null;
+  let currentColor  = null;
   let autoSaveTimer = null;
   let isLoginMode   = true;
   let expandedIds   = new Set();
+  let activeThemeId = localStorage.getItem('theme') || 'dark';
 
   const modalInput  = document.getElementById('modalInput');
   const modalChar   = document.getElementById('modalChar');
   const modalStatus = document.getElementById('modalStatus');
   const modalTitle  = document.getElementById('modalTitle');
+
+  // ── 테마 초기화 ──────────────────────────────────────────
+  function buildThemePresets() {
+    const container = document.getElementById('themePresets');
+    container.innerHTML = THEMES.map(t => `
+      <div class="theme-swatch ${t.id === activeThemeId ? 'active' : ''}"
+           style="background:${t.bg}; border: 2px solid ${t.border}"
+           onclick="applyTheme('${t.id}')"
+           title="${t.label}">
+        <span class="check">✓</span>
+      </div>
+    `).join('');
+  }
+
+  function applyTheme(id) {
+    const t = THEMES.find(x => x.id === id);
+    if (!t) return;
+    activeThemeId = id;
+    localStorage.setItem('theme', id);
+    const root = document.documentElement;
+    root.style.setProperty('--bg', t.bg);
+    root.style.setProperty('--surface', t.surface);
+    root.style.setProperty('--surface2', t.surface2);
+    root.style.setProperty('--border', t.border);
+    document.getElementById('bgColorPicker').value = t.bg;
+    document.getElementById('surfaceColorPicker').value = t.surface;
+    buildThemePresets();
+    showToast(t.label + ' 테마 적용됐습니다');
+  }
+
+  function applyCustomBg(color) {
+    document.documentElement.style.setProperty('--bg', color);
+    activeThemeId = 'custom';
+    localStorage.setItem('theme', 'custom');
+    localStorage.setItem('customBg', color);
+    buildThemePresets();
+  }
+
+  function applyCustomSurface(color) {
+    document.documentElement.style.setProperty('--surface', color);
+    localStorage.setItem('customSurface', color);
+  }
+
+  function loadSavedTheme() {
+    const saved = localStorage.getItem('theme');
+    if (saved && saved !== 'custom') {
+      applyTheme(saved);
+    } else if (saved === 'custom') {
+      const bg      = localStorage.getItem('customBg') || '#0f0f0f';
+      const surface = localStorage.getItem('customSurface') || '#1a1a1a';
+      document.documentElement.style.setProperty('--bg', bg);
+      document.documentElement.style.setProperty('--surface', surface);
+      document.getElementById('bgColorPicker').value = bg;
+      document.getElementById('surfaceColorPicker').value = surface;
+    }
+    buildThemePresets();
+  }
+
+  function toggleThemePanel() {
+    document.getElementById('themePanel').classList.toggle('open');
+  }
+
+  // 바깥 클릭 시 패널 닫기
+  document.addEventListener('click', e => {
+    const panel = document.getElementById('themePanel');
+    if (!panel.contains(e.target) && !e.target.closest('.icon-btn')) {
+      panel.classList.remove('open');
+    }
+  });
+
+  // ── 노트 색상 선택 UI ────────────────────────────────────
+  function buildColorPicker() {
+    const container = document.getElementById('noteColorPicker');
+    container.innerHTML = NOTE_COLORS.map(c => `
+      <div class="note-color-dot ${c.color === null ? 'default' : ''} ${currentColor === c.color ? 'active' : ''}"
+           style="${c.color ? `background:${c.color}` : ''}"
+           onclick="setNoteColor(${c.color ? `'${c.color}'` : 'null'})"
+           title="${c.label}">
+        ${c.color === null ? '✕' : ''}
+      </div>
+    `).join('');
+
+    // 커스텀 색상 피커
+    container.innerHTML += `
+      <div class="note-color-custom" title="직접 선택">
+        <input type="color" value="${currentColor || '#3a7ae0'}" oninput="setNoteColor(this.value)">
+      </div>
+    `;
+  }
+
+  function setNoteColor(color) {
+    currentColor = color;
+    buildColorPicker();
+    // 즉시 저장
+    if (currentNoteId) {
+      sb.from('notes').update({ color }).eq('id', currentNoteId).then(() => {
+        const note = notes.find(n => n.id === currentNoteId);
+        if (note) { note.color = color; renderNotes(); }
+      });
+    }
+  }
 
   // ── 모달 열기/닫기 ───────────────────────────────────────
   function openModal(noteId = null) {
@@ -523,12 +647,15 @@
       if (!note) return;
       modalInput.value = note.content || '';
       modalTitle.textContent = '노트 수정';
+      currentColor = note.color || null;
     } else {
       modalInput.value = '';
       modalTitle.textContent = '새 노트';
+      currentColor = null;
     }
     modalChar.textContent = modalInput.value.length + '자';
     setModalStatus('');
+    buildColorPicker();
     document.getElementById('modalOverlay').classList.add('open');
     setTimeout(() => modalInput.focus(), 100);
   }
@@ -544,9 +671,15 @@
     if (e.target === document.getElementById('modalOverlay')) closeModal();
   }
 
-  // ── 모달 자동저장 ────────────────────────────────────────
+  // ── 자동저장 ─────────────────────────────────────────────
   function setModalStatus(state) {
-    const map = { '': ['', ''], typing: ['', '작성 중...'], saving: ['saving', '저장 중...'], saved: ['saved', '✓ 저장됨'], error: ['error', '⚠ 저장 실패'] };
+    const map = {
+      '':      ['', ''],
+      typing:  ['', '작성 중...'],
+      saving:  ['saving', '저장 중...'],
+      saved:   ['saved',  '✓ 저장됨'],
+      error:   ['error',  '⚠ 저장 실패'],
+    };
     const [cls, text] = map[state] || ['', ''];
     modalStatus.className = 'modal-status ' + cls;
     modalStatus.textContent = text;
@@ -571,7 +704,7 @@
 
     if (!currentNoteId) {
       const { data, error } = await sb.from('notes')
-        .insert([{ title, content: text, user_id: currentUser.id }])
+        .insert([{ title, content: text, user_id: currentUser.id, color: currentColor }])
         .select().single();
       if (error) { setModalStatus('error'); return; }
       currentNoteId = data.id;
@@ -579,7 +712,7 @@
       notes.unshift(data);
     } else {
       const { data, error } = await sb.from('notes')
-        .update({ title, content: text, updated_at: new Date().toISOString() })
+        .update({ title, content: text, updated_at: new Date().toISOString(), color: currentColor })
         .eq('id', currentNoteId).select().single();
       if (error) { setModalStatus('error'); return; }
       const idx = notes.findIndex(n => n.id === currentNoteId);
@@ -589,49 +722,46 @@
     renderNotes();
   }
 
-  // ── 서식 툴바 ────────────────────────────────────────────
+  // ── 서식 ─────────────────────────────────────────────────
   function fmt(type) {
-    const ta     = modalInput;
-    const start  = ta.selectionStart;
-    const end    = ta.selectionEnd;
-    const sel    = ta.value.substring(start, end);
-    const before = ta.value.substring(0, start);
-    const after  = ta.value.substring(end);
-    const atLine = before.substring(before.lastIndexOf('\n') + 1).trim() === '';
-
-    let ins = ''; let back = 0;
+    const ta = modalInput;
+    const s  = ta.selectionStart, e = ta.selectionEnd;
+    const sel = ta.value.substring(s, e);
+    const bef = ta.value.substring(0, s);
+    const aft = ta.value.substring(e);
+    const atL = bef.substring(bef.lastIndexOf('\n') + 1).trim() === '';
+    let ins = '', back = 0;
     switch(type) {
-      case 'bold':      ins = `**${sel || '굵은 텍스트'}**`; if(!sel) back=2; break;
-      case 'italic':    ins = `*${sel || '기울임 텍스트'}*`; if(!sel) back=1; break;
-      case 'strike':    ins = `~~${sel || '취소선 텍스트'}~~`; if(!sel) back=2; break;
-      case 'h1':        ins = (atLine?'':'\n') + `# ${sel||'제목'}`; break;
-      case 'h2':        ins = (atLine?'':'\n') + `## ${sel||'소제목'}`; break;
-      case 'check':     ins = (atLine?'':'\n') + `- [ ] ${sel||'할 일'}`; break;
-      case 'ul':        ins = (atLine?'':'\n') + `- ${sel||'항목'}`; break;
-      case 'code':      ins = `\`${sel||'code'}\``; if(!sel) back=1; break;
-      case 'codeblock': ins = `\n\`\`\`\n${sel||'코드'}\n\`\`\`\n`; break;
-      case 'quote':     ins = (atLine?'':'\n') + `> ${sel||'인용문'}`; break;
+      case 'bold':      ins=`**${sel||'굵은 텍스트'}**`; if(!sel)back=2; break;
+      case 'italic':    ins=`*${sel||'기울임 텍스트'}*`; if(!sel)back=1; break;
+      case 'strike':    ins=`~~${sel||'취소선'}~~`; if(!sel)back=2; break;
+      case 'h1':        ins=(atL?'':'\n')+`# ${sel||'제목'}`; break;
+      case 'h2':        ins=(atL?'':'\n')+`## ${sel||'소제목'}`; break;
+      case 'check':     ins=(atL?'':'\n')+`- [ ] ${sel||'할 일'}`; break;
+      case 'ul':        ins=(atL?'':'\n')+`- ${sel||'항목'}`; break;
+      case 'code':      ins=`\`${sel||'code'}\``; if(!sel)back=1; break;
+      case 'codeblock': ins=`\n\`\`\`\n${sel||'코드'}\n\`\`\`\n`; break;
+      case 'quote':     ins=(atL?'':'\n')+`> ${sel||'인용문'}`; break;
     }
-    ta.value = before + ins + after;
-    const p = start + ins.length - back;
+    ta.value = bef + ins + aft;
+    const p = s + ins.length - back;
     ta.selectionStart = ta.selectionEnd = p;
     ta.focus();
     ta.dispatchEvent(new Event('input'));
   }
 
-  // ── 이미지 업로드 ────────────────────────────────────────
+  // ── 이미지 ───────────────────────────────────────────────
   async function uploadImage(file) {
-    if (file.size > 5000000) { showToast('5MB 이하 이미지만 가능해요', true); return null; }
-    const ext = file.name?.split('.').pop() || 'png';
+    if (file.size > 5000000) { showToast('5MB 이하만 가능해요', true); return null; }
+    const ext  = file.name?.split('.').pop() || 'png';
     const path = `${currentUser.id}/${Date.now()}.${ext}`;
     const { error } = await sb.storage.from('note-images').upload(path, file, { upsert: true });
-    if (error) { showToast('업로드 실패: ' + error.message, true); return null; }
+    if (error) { showToast('업로드 실패', true); return null; }
     return sb.storage.from('note-images').getPublicUrl(path).data.publicUrl;
   }
 
   function insertImage(fileInput) {
-    const file = fileInput.files[0];
-    if (!file) return;
+    const file = fileInput.files[0]; if (!file) return;
     showToast('업로드 중...');
     uploadImage(file).then(url => {
       if (!url) return;
@@ -645,8 +775,7 @@
   }
 
   modalInput.addEventListener('paste', e => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
+    const items = e.clipboardData?.items; if (!items) return;
     for (const item of items) {
       if (item.type.startsWith('image/')) {
         e.preventDefault();
@@ -664,7 +793,7 @@
     }
   });
 
-  // ── 키보드 단축키 ────────────────────────────────────────
+  // ── 키보드 ───────────────────────────────────────────────
   modalInput.addEventListener('keydown', e => {
     if (e.ctrlKey && e.key === 'b') { e.preventDefault(); fmt('bold'); }
     if (e.ctrlKey && e.key === 'i') { e.preventDefault(); fmt('italic'); }
@@ -688,7 +817,7 @@
     if (e.key === 'Escape') closeModal();
   });
 
-  // ── 노트 카드 펼치기/접기 ───────────────────────────────
+  // ── 카드 펼치기 ──────────────────────────────────────────
   function toggleExpand(id) {
     if (expandedIds.has(id)) expandedIds.delete(id);
     else expandedIds.add(id);
@@ -696,10 +825,9 @@
     if (card) card.classList.toggle('open', expandedIds.has(id));
   }
 
-  // ── 체크박스 토글 ────────────────────────────────────────
+  // ── 체크박스 ─────────────────────────────────────────────
   async function toggleCheck(noteId, idx) {
-    const note = notes.find(n => n.id === noteId);
-    if (!note) return;
+    const note = notes.find(n => n.id === noteId); if (!note) return;
     let count = 0;
     note.content = note.content.replace(/- \[(x| )\] /g, m => count++ === idx ? (m.includes('x') ? '- [ ] ' : '- [x] ') : m);
     const title = note.content.replace(/[#*`~>_\[\]!]/g, '').split('\n')[0].trim().slice(0, 50);
@@ -731,13 +859,13 @@
     renderNotes();
   }
 
-  // ── 날짜 포맷 ────────────────────────────────────────────
+  // ── 렌더링 ──────────────────────────────────────────────
   function formatDate(iso) {
     if (!iso) return '';
     const d = new Date(iso), diff = Date.now() - d;
-    if (diff < 60000)    return '방금 전';
-    if (diff < 3600000)  return Math.floor(diff / 60000) + '분 전';
-    if (diff < 86400000) return Math.floor(diff / 3600000) + '시간 전';
+    if (diff < 60000)     return '방금 전';
+    if (diff < 3600000)   return Math.floor(diff / 60000) + '분 전';
+    if (diff < 86400000)  return Math.floor(diff / 3600000) + '시간 전';
     if (diff < 604800000) return Math.floor(diff / 86400000) + '일 전';
     return d.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
   }
@@ -760,38 +888,37 @@
     return '📝';
   }
 
-  // ── 렌더링 ──────────────────────────────────────────────
   function renderNotes() {
     const q = document.getElementById('search').value.toLowerCase();
-    let filtered = notes.filter(n => (n.content || '').toLowerCase().includes(q) || (n.title || '').toLowerCase().includes(q));
+    let filtered = notes.filter(n =>
+      (n.content||'').toLowerCase().includes(q) || (n.title||'').toLowerCase().includes(q)
+    );
     if (!sortNewest) filtered = [...filtered].reverse();
 
     document.getElementById('count').textContent = notes.length + '개';
     const container = document.getElementById('notes');
 
     if (!filtered.length) {
-      container.innerHTML = `<div class="empty">
-        ${q ? '검색 결과가 없어요 🔍' : '아래 + 버튼으로 첫 노트를 작성해보세요 ✏️'}
-      </div>`;
+      container.innerHTML = `<div class="empty">${q ? '검색 결과가 없어요 🔍' : '아래 + 버튼으로 첫 노트를 작성해보세요 ✏️'}</div>`;
       return;
     }
 
     container.innerHTML = filtered.map(n => {
-      const isOpen    = expandedIds.has(n.id);
-      const dateStr   = formatDate(n.updated_at && n.updated_at !== n.created_at ? n.updated_at : n.created_at);
-      const isEdited  = n.updated_at && n.updated_at !== n.created_at;
-      const charCount = (n.content || '').length;
-      const icon      = getNoteIcon(n.content);
+      const isOpen   = expandedIds.has(n.id);
+      const dateStr  = formatDate(n.updated_at && n.updated_at !== n.created_at ? n.updated_at : n.created_at);
+      const isEdited = n.updated_at && n.updated_at !== n.created_at;
+      const color    = n.color || 'var(--border)';
 
       return `
-        <div class="note-card ${isOpen ? 'open' : ''}" data-id="${n.id}">
+        <div class="note-card ${isOpen ? 'open' : ''}" data-id="${n.id}"
+             style="border-left-color: ${color}">
           <div class="note-card-header" onclick="toggleExpand('${n.id}')">
-            <div class="note-icon">${icon}</div>
+            <div class="note-icon">${getNoteIcon(n.content)}</div>
             <div class="note-card-info">
               <div class="note-card-title">${escHtml(n.title || '제목 없음')}</div>
               <div class="note-card-meta">
                 <span>${dateStr}${isEdited ? ' · 수정됨' : ''}</span>
-                <span class="note-char-count">${charCount.toLocaleString()}자</span>
+                <span class="note-char-count">${(n.content||'').length.toLocaleString()}자</span>
               </div>
             </div>
             <span class="note-expand-btn">+</span>
@@ -807,7 +934,6 @@
       `;
     }).join('');
 
-    // 체크박스 인터랙티브
     container.querySelectorAll('.note-card').forEach(card => {
       const noteId = card.dataset.id;
       card.querySelectorAll('.task-cb').forEach((cb, idx) => {
@@ -860,6 +986,7 @@
       document.getElementById('userEmail').textContent = currentUser.email;
       document.getElementById('authScreen').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
+      loadSavedTheme();
       loadNotes();
     } else {
       currentUser = null; notes = []; currentNoteId = null;
@@ -867,6 +994,9 @@
       document.getElementById('app').style.display = 'none';
     }
   });
+
+  // 초기 테마 로드
+  loadSavedTheme();
 </script>
 </body>
 </html>
