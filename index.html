@@ -672,26 +672,31 @@
     input.focus();
     input.dispatchEvent(new Event('input'));
   }
-
+  // ── 이미지 업로드 → Supabase Storage ─────────────────────
+   async function uploadImage(file) {
+    if (file.size > 5000000) { showToast('이미지는 5MB 이하만 가능해요', true); return null; }
+    const ext      = file.name.split('.').pop() || 'png';
+    const fileName = `${currentUser.id}/${Date.now()}.${ext}`;
+    const { data, error } = await sb.storage
+      .from('note-images')
+      .upload(fileName, file, { upsert: true });
+    if (error) { showToast('이미지 업로드 실패', true); return null; }
+    const { data: urlData } = sb.storage.from('note-images').getPublicUrl(fileName);
+    return urlData.publicUrl;
+  }
   // ── 이미지 삽입 ──────────────────────────────────────────
-  function insertImage(fileInput) {
+   function insertImage(fileInput) {
     const file = fileInput.files[0];
     if (!file) return;
-    if (file.size > 1000000) {
-      showToast('이미지는 1MB 이하만 가능해요', true);
-      fileInput.value = '';
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const md = `\n![이미지](${e.target.result})\n`;
+    showToast('업로드 중...');
+    uploadImage(file).then(url => {
+      if (!url) return;
+      const md  = `\n![이미지](${url})\n`;
       const pos = input.selectionStart;
       input.value = input.value.substring(0, pos) + md + input.value.substring(pos);
-      input.selectionStart = input.selectionEnd = pos + md.length;
-      input.focus();
       input.dispatchEvent(new Event('input'));
-    };
-    reader.readAsDataURL(file);
+      showToast('이미지 추가됐습니다 ✓');
+    });
     fileInput.value = '';
   }
 
@@ -703,15 +708,15 @@
       if (item.type.startsWith('image/')) {
         e.preventDefault();
         const file = item.getAsFile();
-        if (file.size > 1000000) { showToast('이미지는 1MB 이하만 가능해요', true); return; }
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          const md = `\n![이미지](${ev.target.result})\n`;
+        showToast('업로드 중...');
+        uploadImage(file).then(url => {
+          if (!url) return;
+          const md  = `\n![이미지](${url})\n`;
           const pos = input.selectionStart;
           input.value = input.value.substring(0, pos) + md + input.value.substring(pos);
           input.dispatchEvent(new Event('input'));
-        };
-        reader.readAsDataURL(file);
+          showToast('이미지 추가됐습니다 ✓');
+        });
         return;
       }
     }
