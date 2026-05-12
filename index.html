@@ -453,11 +453,7 @@
     .note-actions {
       display: flex;
       gap: 5px;
-      opacity: 0;
-      transition: opacity 0.2s;
     }
-
-    .note-card:hover .note-actions { opacity: 1; }
 
     .action-btn {
       background: var(--surface2);
@@ -928,7 +924,7 @@
 
     container.innerHTML = filtered.map(n => `
       <div class="note-card" data-id="${n.id}">
-        <div class="note-preview">${renderContent(n.content)}</div>
+        <div class="note-preview" onclick="startEdit('${n.id}')" style="cursor:pointer">${renderContent(n.content)}</div>
         <textarea class="note-edit-area" rows="4">${escHtml(n.content)}</textarea>
         <div class="note-footer">
           <div class="note-date">
