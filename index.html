@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>노트</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -17,6 +18,7 @@
       --text: #e8e8e8;
       --text-muted: #888;
       --danger: #e05252;
+      --success: #4caf50;
     }
 
     body {
@@ -28,45 +30,148 @@
       flex-direction: column;
     }
 
+    /* ── 로그인 화면 ─────────────────────────── */
+    #authScreen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .auth-box {
+      width: 100%;
+      max-width: 360px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px 28px;
+    }
+
+    .auth-logo { font-size: 22px; font-weight: 500; margin-bottom: 6px; }
+    .auth-sub  { font-size: 13px; color: var(--text-muted); margin-bottom: 28px; }
+
+    .auth-tabs {
+      display: flex;
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 3px;
+      margin-bottom: 22px;
+    }
+
+    .auth-tab {
+      flex: 1;
+      background: none;
+      border: none;
+      border-radius: 6px;
+      color: var(--text-muted);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 13px;
+      padding: 7px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .auth-tab.active { background: var(--surface); color: var(--text); font-weight: 500; }
+
+    .auth-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; display: block; }
+
+    .auth-input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 14px;
+      padding: 11px 14px;
+      outline: none;
+      margin-bottom: 14px;
+      transition: border-color 0.2s;
+    }
+
+    .auth-input:focus { border-color: var(--accent); }
+
+    .auth-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 12px;
+      cursor: pointer;
+      margin-top: 4px;
+      transition: opacity 0.2s;
+    }
+
+    .auth-btn:hover { opacity: 0.85; }
+    .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .auth-error {
+      font-size: 12px;
+      color: var(--danger);
+      margin-top: 10px;
+      text-align: center;
+      min-height: 18px;
+    }
+
+    /* ── 앱 ──────────────────────────────────── */
+    #app { display: none; flex-direction: column; min-height: 100vh; }
+
     header {
-      padding: 20px 24px;
+      padding: 16px 24px;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
-    header h1 {
-      font-size: 18px;
-      font-weight: 500;
-      letter-spacing: -0.3px;
-    }
+    header h1 { font-size: 17px; font-weight: 500; }
 
-    header span {
-      font-size: 11px;
+    .badge {
+      font-size: 10px;
       background: var(--accent);
       color: #000;
-      padding: 2px 8px;
+      padding: 2px 7px;
       border-radius: 20px;
       font-weight: 700;
     }
 
-    .count {
-      margin-left: auto;
-      font-size: 13px;
+    .user-email {
+      font-size: 12px;
       color: var(--text-muted);
+      margin-left: auto;
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .editor {
-      padding: 20px 24px;
+    .logout-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 11px;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .logout-btn:hover { color: var(--danger); border-color: var(--danger); }
+
+    /* ── 에디터 ──────────────────────────────── */
+    .editor-wrap {
+      padding: 16px 24px 12px;
       border-bottom: 1px solid var(--border);
-      display: flex;
-      gap: 12px;
-      align-items: flex-end;
     }
 
     textarea {
-      flex: 1;
+      width: 100%;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -74,41 +179,55 @@
       font-family: 'Noto Sans KR', sans-serif;
       font-size: 14px;
       line-height: 1.7;
-      padding: 14px 16px;
+      padding: 12px 14px;
       resize: none;
-      min-height: 100px;
-      transition: border-color 0.2s;
+      min-height: 90px;
       outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 8px;
     }
 
-    textarea:focus {
-      border-color: var(--accent);
+    textarea:focus { border-color: var(--accent); }
+    textarea::placeholder { color: var(--text-muted); }
+
+    .editor-footer {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
-    textarea::placeholder {
+    .char-count { font-size: 11px; color: var(--text-muted); }
+
+    .save-status {
+      font-size: 12px;
       color: var(--text-muted);
+      flex: 1;
+      text-align: center;
+      transition: color 0.3s;
     }
 
-    .save-btn {
-      background: var(--accent);
-      color: #000;
-      border: none;
-      border-radius: 10px;
-      padding: 14px 20px;
+    .save-status.saving { color: var(--accent); }
+    .save-status.saved  { color: var(--success); }
+    .save-status.error  { color: var(--danger); }
+
+    .new-note-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--text-muted);
       font-family: 'Noto Sans KR', sans-serif;
-      font-size: 14px;
-      font-weight: 700;
+      font-size: 12px;
+      padding: 5px 12px;
       cursor: pointer;
+      transition: color 0.2s;
       white-space: nowrap;
-      transition: opacity 0.2s, transform 0.1s;
-      align-self: flex-end;
     }
 
-    .save-btn:hover { opacity: 0.85; }
-    .save-btn:active { transform: scale(0.97); }
+    .new-note-btn:hover { color: var(--text); }
 
+    /* ── 툴바 ────────────────────────────────── */
     .toolbar {
-      padding: 14px 24px;
+      padding: 10px 24px;
       display: flex;
       gap: 8px;
       align-items: center;
@@ -123,7 +242,7 @@
       color: var(--text);
       font-family: 'Noto Sans KR', sans-serif;
       font-size: 13px;
-      padding: 8px 14px;
+      padding: 7px 12px;
       outline: none;
       transition: border-color 0.2s;
     }
@@ -138,17 +257,19 @@
       color: var(--text-muted);
       font-family: 'Noto Sans KR', sans-serif;
       font-size: 12px;
-      padding: 8px 14px;
+      padding: 7px 12px;
       cursor: pointer;
       transition: color 0.2s;
     }
 
     .sort-btn:hover { color: var(--text); }
+    .count { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
 
+    /* ── 노트 목록 ───────────────────────────── */
     .notes {
       flex: 1;
       overflow-y: auto;
-      padding: 16px 24px;
+      padding: 14px 24px;
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -159,32 +280,23 @@
       color: var(--text-muted);
       font-size: 14px;
       margin-top: 60px;
-      line-height: 2;
+      line-height: 2.4;
     }
 
     .note-card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 16px;
-      cursor: pointer;
+      padding: 14px;
       transition: border-color 0.2s, background 0.2s;
-      position: relative;
     }
 
-    .note-card:hover {
-      border-color: #3e3e3e;
-      background: var(--surface2);
-    }
-
-    .note-card.editing {
-      border-color: var(--accent);
-    }
+    .note-card:hover { border-color: #3e3e3e; background: var(--surface2); }
+    .note-card.editing { border-color: var(--accent); }
 
     .note-preview {
       font-size: 14px;
       line-height: 1.7;
-      color: var(--text);
       white-space: pre-wrap;
       word-break: break-all;
     }
@@ -199,8 +311,6 @@
       line-height: 1.7;
       resize: none;
       outline: none;
-      white-space: pre-wrap;
-      word-break: break-all;
       display: none;
     }
 
@@ -208,17 +318,14 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-top: 10px;
+      margin-top: 8px;
     }
 
-    .note-date {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
+    .note-date { font-size: 11px; color: var(--text-muted); }
 
     .note-actions {
       display: flex;
-      gap: 6px;
+      gap: 5px;
       opacity: 0;
       transition: opacity 0.2s;
     }
@@ -228,159 +335,381 @@
     .action-btn {
       background: var(--surface2);
       border: 1px solid var(--border);
-      border-radius: 6px;
+      border-radius: 5px;
       color: var(--text-muted);
       font-size: 11px;
-      padding: 4px 10px;
+      padding: 3px 9px;
       cursor: pointer;
-      transition: color 0.2s, border-color 0.2s;
       font-family: 'Noto Sans KR', sans-serif;
+      transition: color 0.2s, border-color 0.2s;
     }
 
-    .action-btn:hover { color: var(--text); border-color: #4e4e4e; }
+    .action-btn:hover { color: var(--text); }
     .action-btn.del:hover { color: var(--danger); border-color: var(--danger); }
     .action-btn.save-edit { color: var(--accent); border-color: var(--accent); display: none; }
 
-    .char-count {
-      font-size: 11px;
-      color: var(--text-muted);
-      text-align: right;
-      padding: 0 24px 8px;
+    /* ── 토스트 ──────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 18px;
+      font-size: 13px;
+      transition: transform 0.3s;
+      z-index: 999;
+      white-space: nowrap;
+    }
+
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.err  { border-color: var(--danger); color: var(--danger); }
+
+    /* ── 모바일 ──────────────────────────────── */
+    @media (max-width: 600px) {
+      header { padding: 12px 16px; }
+      .user-email { display: none; }
+      .editor-wrap { padding: 12px 16px 10px; }
+      .toolbar { padding: 8px 16px; }
+      .notes { padding: 12px 16px; }
+      textarea { min-height: 80px; font-size: 15px; }
     }
   </style>
+  <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f0a500">
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+  }
+</script>
 </head>
 <body>
 
-<header>
-  <h1>📝 노트</h1>
-  <span>MVP</span>
-  <div class="count" id="count">0개</div>
-</header>
+<!-- ══ 로그인 화면 ══ -->
+<div id="authScreen">
+  <div class="auth-box">
+    <div class="auth-logo">📝 노트</div>
+    <div class="auth-sub">어디서든 내 노트를 꺼내요</div>
 
-<div class="editor">
-  <textarea id="input" placeholder="메모를 입력하세요...&#10;Ctrl+Enter 로 저장"></textarea>
-  <button class="save-btn" onclick="saveNote()">저장</button>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">로그인</button>
+      <button class="auth-tab" onclick="switchTab('signup')">회원가입</button>
+    </div>
+
+    <label class="auth-label">이메일</label>
+    <input class="auth-input" id="authEmail" type="email" placeholder="you@example.com">
+
+    <label class="auth-label">비밀번호</label>
+    <input class="auth-input" id="authPw" type="password" placeholder="6자 이상">
+
+    <button class="auth-btn" id="authBtn" onclick="doAuth()">로그인</button>
+    <div class="auth-error" id="authError"></div>
+  </div>
 </div>
-<div class="char-count" id="charCount">0자</div>
 
-<div class="toolbar">
-  <input class="search" id="search" placeholder="🔍 검색..." oninput="renderNotes()">
-  <button class="sort-btn" onclick="toggleSort()">🕐 최신순</button>
+<!-- ══ 앱 ══ -->
+<div id="app">
+  <header>
+    <h1>📝 노트</h1>
+    <span class="badge">MVP</span>
+    <span class="user-email" id="userEmail"></span>
+    <button class="logout-btn" onclick="logout()">로그아웃</button>
+  </header>
+
+  <div class="editor-wrap">
+    <textarea id="input" placeholder="지금 바로 입력하세요...&#10;2초 후 자동으로 저장됩니다"></textarea>
+    <div class="editor-footer">
+      <span class="char-count" id="charCount">0자</span>
+      <span class="save-status" id="saveStatus"></span>
+      <button class="new-note-btn" onclick="newNote()">+ 새 노트</button>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <input class="search" id="search" placeholder="🔍 검색..." oninput="renderNotes()">
+    <button class="sort-btn" onclick="toggleSort()">🕐 최신순</button>
+    <span class="count" id="count">0개</span>
+  </div>
+
+  <div class="notes" id="notes"></div>
 </div>
 
-<div class="notes" id="notes"></div>
+<div class="toast" id="toast"></div>
 
 <script>
-  let notes = JSON.parse(localStorage.getItem('notes_mvp') || '[]');
-  let sortNewest = true;
+  const SUPABASE_URL = 'https://fiilawtgnsygjijfucpe.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_klauYsbGxSWPZYIi1rMGmA_QgVpBT8r';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  const input = document.getElementById('input');
-  const charCount = document.getElementById('charCount');
+  let notes         = [];
+  let sortNewest    = true;
+  let currentUser   = null;
+  let currentNoteId = null;
+  let autoSaveTimer = null;
+  let isLoginMode   = true;
 
+  const input      = document.getElementById('input');
+  const charCount  = document.getElementById('charCount');
+  const saveStatus = document.getElementById('saveStatus');
+
+  // ── Auth 탭 전환 ─────────────────────────────────────────
+  function switchTab(mode) {
+    isLoginMode = (mode === 'login');
+    document.querySelectorAll('.auth-tab').forEach((t, i) =>
+      t.classList.toggle('active', isLoginMode ? i === 0 : i === 1)
+    );
+    document.getElementById('authBtn').textContent = isLoginMode ? '로그인' : '회원가입';
+    document.getElementById('authError').textContent = '';
+  }
+
+  // ── 로그인 / 회원가입 ────────────────────────────────────
+  async function doAuth() {
+    const email = document.getElementById('authEmail').value.trim();
+    const pw    = document.getElementById('authPw').value;
+    const btn   = document.getElementById('authBtn');
+    const errEl = document.getElementById('authError');
+
+    if (!email || !pw) { errEl.textContent = '이메일과 비밀번호를 입력해주세요'; return; }
+    if (pw.length < 6)  { errEl.textContent = '비밀번호는 6자 이상이어야 해요'; return; }
+
+    btn.disabled = true;
+    btn.textContent = '처리 중...';
+    errEl.textContent = '';
+
+    const { error } = isLoginMode
+      ? await sb.auth.signInWithPassword({ email, password: pw })
+      : await sb.auth.signUp({ email, password: pw });
+
+    btn.disabled = false;
+    btn.textContent = isLoginMode ? '로그인' : '회원가입';
+
+    if (error) {
+      errEl.textContent = error.message.includes('Invalid')
+        ? '이메일 또는 비밀번호가 틀렸어요'
+        : error.message;
+    }
+  }
+
+  document.getElementById('authPw').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doAuth();
+  });
+
+  // ── 로그아웃 ─────────────────────────────────────────────
+  async function logout() { await sb.auth.signOut(); }
+
+  // ── Auth 상태 감지 ───────────────────────────────────────
+  sb.auth.onAuthStateChange((event, session) => {
+    if (session?.user) {
+      currentUser = session.user;
+      document.getElementById('userEmail').textContent = currentUser.email;
+      document.getElementById('authScreen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      loadNotes();
+    } else {
+      currentUser = null;
+      notes = [];
+      currentNoteId = null;
+      document.getElementById('authScreen').style.display = 'flex';
+      document.getElementById('app').style.display = 'none';
+    }
+  });
+
+  // ── 자동저장 상태 ────────────────────────────────────────
+  function setStatus(state) {
+    const map = {
+      '':      ['', ''],
+      typing:  ['', '작성 중...'],
+      saving:  ['saving', '저장 중...'],
+      saved:   ['saved',  '✓ 저장됨'],
+      error:   ['error',  '⚠ 저장 실패'],
+    };
+    const [cls, text] = map[state] || ['', ''];
+    saveStatus.className = 'save-status ' + cls;
+    saveStatus.textContent = text;
+  }
+
+  // ── 자동저장 debounce 2초 ────────────────────────────────
   input.addEventListener('input', () => {
     charCount.textContent = input.value.length + '자';
+    clearTimeout(autoSaveTimer);
+    if (input.value.trim()) {
+      setStatus('typing');
+      autoSaveTimer = setTimeout(autoSave, 2000);
+    } else {
+      setStatus('');
+    }
   });
 
-  input.addEventListener('keydown', e => {
-    if (e.ctrlKey && e.key === 'Enter') saveNote();
-  });
-
-  function saveNote() {
+  async function autoSave() {
     const text = input.value.trim();
-    if (!text) return;
-    notes.unshift({ id: Date.now(), text, date: new Date().toISOString() });
-    persist();
+    if (!text || !currentUser) return;
+
+    setStatus('saving');
+    const title = text.split('\n')[0].slice(0, 50);
+
+    if (!currentNoteId) {
+      const { data, error } = await sb
+        .from('notes')
+        .insert([{ title, content: text, user_id: currentUser.id }])
+        .select().single();
+      if (error) { setStatus('error'); return; }
+      currentNoteId = data.id;
+      notes.unshift(data);
+    } else {
+      const { data, error } = await sb
+        .from('notes')
+        .update({ title, content: text, updated_at: new Date().toISOString() })
+        .eq('id', currentNoteId).select().single();
+      if (error) { setStatus('error'); return; }
+      const idx = notes.findIndex(n => n.id === currentNoteId);
+      if (idx !== -1) notes[idx] = data;
+    }
+
+    setStatus('saved');
+    renderNotes();
+  }
+
+  // ── 새 노트 ──────────────────────────────────────────────
+  function newNote() {
+    clearTimeout(autoSaveTimer);
+    currentNoteId = null;
     input.value = '';
     charCount.textContent = '0자';
+    setStatus('');
+    input.focus();
+  }
+
+  // ── 노트 불러오기 ────────────────────────────────────────
+  async function loadNotes() {
+    const { data, error } = await sb
+      .from('notes').select('*').order('created_at', { ascending: false });
+    if (error) { showToast('불러오기 실패', true); return; }
+    notes = data;
     renderNotes();
   }
 
-  function deleteNote(id) {
+  // ── 삭제 ────────────────────────────────────────────────
+  async function deleteNote(id) {
+    if (id === currentNoteId) newNote();
+    const { error } = await sb.from('notes').delete().eq('id', id);
+    if (error) { showToast('삭제 실패', true); return; }
     notes = notes.filter(n => n.id !== id);
-    persist();
     renderNotes();
+    showToast('삭제됐습니다');
   }
 
+  // ── 수정 ────────────────────────────────────────────────
   function startEdit(id) {
-    const card = document.querySelector(`[data-id="${id}"]`);
+    const card    = document.querySelector(`[data-id="${id}"]`);
     const preview = card.querySelector('.note-preview');
-    const editArea = card.querySelector('.note-edit-area');
-    const saveBtn = card.querySelector('.save-edit');
-    const editBtn = card.querySelector('.edit-btn');
+    const area    = card.querySelector('.note-edit-area');
+    const saveEl  = card.querySelector('.save-edit');
+    const editEl  = card.querySelector('.edit-btn');
     preview.style.display = 'none';
-    editArea.style.display = 'block';
-    editArea.style.minHeight = preview.scrollHeight + 'px';
-    saveBtn.style.display = 'inline';
-    editBtn.style.display = 'none';
+    area.style.display    = 'block';
+    area.style.minHeight  = Math.max(preview.scrollHeight, 80) + 'px';
+    saveEl.style.display  = 'inline';
+    editEl.style.display  = 'none';
     card.classList.add('editing');
-    editArea.focus();
+    area.focus();
   }
 
-  function saveEdit(id) {
-    const card = document.querySelector(`[data-id="${id}"]`);
-    const editArea = card.querySelector('.note-edit-area');
-    const text = editArea.value.trim();
+  async function saveEdit(id) {
+    const card   = document.querySelector(`[data-id="${id}"]`);
+    const area   = card.querySelector('.note-edit-area');
+    const saveEl = card.querySelector('.save-edit');
+    const text   = area.value.trim();
     if (!text) return;
-    const note = notes.find(n => n.id === id);
-    if (note) { note.text = text; note.edited = new Date().toISOString(); }
-    persist();
+
+    saveEl.textContent = '저장 중...';
+    saveEl.disabled = true;
+
+    const title = text.split('\n')[0].slice(0, 50);
+    const { data, error } = await sb
+      .from('notes')
+      .update({ title, content: text, updated_at: new Date().toISOString() })
+      .eq('id', id).select().single();
+
+    if (error) {
+      showToast('수정 실패', true);
+      saveEl.textContent = '저장';
+      saveEl.disabled = false;
+      return;
+    }
+
+    const idx = notes.findIndex(n => n.id === id);
+    if (idx !== -1) notes[idx] = data;
     renderNotes();
+    showToast('수정됐습니다 ✓');
   }
 
+  // ── 정렬 ────────────────────────────────────────────────
   function toggleSort() {
     sortNewest = !sortNewest;
     document.querySelector('.sort-btn').textContent = sortNewest ? '🕐 최신순' : '🕐 오래된순';
     renderNotes();
   }
 
+  // ── 유틸 ────────────────────────────────────────────────
   function formatDate(iso) {
-    const d = new Date(iso);
-    const now = new Date();
-    const diff = now - d;
-    if (diff < 60000) return '방금 전';
-    if (diff < 3600000) return Math.floor(diff / 60000) + '분 전';
+    if (!iso) return '';
+    const d = new Date(iso), diff = Date.now() - d;
+    if (diff < 60000)    return '방금 전';
+    if (diff < 3600000)  return Math.floor(diff / 60000) + '분 전';
     if (diff < 86400000) return Math.floor(diff / 3600000) + '시간 전';
     return d.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
+  function escHtml(t) {
+    return (t || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── 렌더링 ──────────────────────────────────────────────
   function renderNotes() {
     const q = document.getElementById('search').value.toLowerCase();
-    let filtered = notes.filter(n => n.text.toLowerCase().includes(q));
+    let filtered = notes.filter(n => (n.content || '').toLowerCase().includes(q));
     if (!sortNewest) filtered = [...filtered].reverse();
 
     document.getElementById('count').textContent = notes.length + '개';
     const container = document.getElementById('notes');
 
     if (!filtered.length) {
-      container.innerHTML = `<div class="empty">${q ? '검색 결과가 없어요 🔍' : '메모를 작성해보세요 ✏️'}</div>`;
+      container.innerHTML = `<div class="empty">
+        ${q ? '검색 결과가 없어요 🔍' : '지금 바로 입력해보세요 ✏️'}
+        <br><span style="font-size:12px">입력하면 2초 후 자동으로 저장돼요</span>
+      </div>`;
       return;
     }
 
     container.innerHTML = filtered.map(n => `
       <div class="note-card" data-id="${n.id}">
-        <div class="note-preview">${escHtml(n.text)}</div>
-        <textarea class="note-edit-area" rows="4">${escHtml(n.text)}</textarea>
+        <div class="note-preview">${escHtml(n.content)}</div>
+        <textarea class="note-edit-area" rows="4">${escHtml(n.content)}</textarea>
         <div class="note-footer">
-          <div class="note-date">${formatDate(n.edited || n.date)}${n.edited ? ' (수정됨)' : ''}</div>
+          <div class="note-date">
+            ${formatDate(n.updated_at && n.updated_at !== n.created_at ? n.updated_at : n.created_at)}
+            ${n.updated_at && n.updated_at !== n.created_at ? ' (수정됨)' : ''}
+          </div>
           <div class="note-actions">
-            <button class="action-btn edit-btn" onclick="startEdit(${n.id})">수정</button>
-            <button class="action-btn save-edit" onclick="saveEdit(${n.id})">저장</button>
-            <button class="action-btn del" onclick="deleteNote(${n.id})">삭제</button>
+            <button class="action-btn edit-btn" onclick="startEdit('${n.id}')">수정</button>
+            <button class="action-btn save-edit" onclick="saveEdit('${n.id}')">저장</button>
+            <button class="action-btn del" onclick="deleteNote('${n.id}')">삭제</button>
           </div>
         </div>
       </div>
     `).join('');
   }
 
-  function escHtml(t) {
-    return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // ── 토스트 ──────────────────────────────────────────────
+  function showToast(msg, isErr = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (isErr ? ' err' : '');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.className = 'toast', 2500);
   }
-
-  function persist() {
-    localStorage.setItem('notes_mvp', JSON.stringify(notes));
-  }
-
-  renderNotes();
 </script>
 </body>
 </html>
