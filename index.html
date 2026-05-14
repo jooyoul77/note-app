@@ -535,16 +535,12 @@
 </div>
 <!-- 이미지 리사이즈 툴바 -->
 <div class="img-resize-bar" id="imgResizeBar">
-  <span style="font-size:11px;color:var(--text-muted);margin-right:2px">크기</span>
+  <span style="font-size:11px;color:var(--text-muted);margin-right:2px">이미지 크기</span>
   <div class="img-sz-sep"></div>
   <button class="img-sz-btn" onclick="setImgSize(25)">25%</button>
   <button class="img-sz-btn" onclick="setImgSize(50)">50%</button>
   <button class="img-sz-btn" onclick="setImgSize(75)">75%</button>
-  <button class="img-sz-btn" onclick="setImgSize(100)">전체</button>
-  <div class="img-sz-sep"></div>
-  <button class="img-sz-btn" onclick="setImgSize('left')"  title="왼쪽 정렬">◀</button>
-  <button class="img-sz-btn" onclick="setImgSize('center')" title="가운데">■</button>
-  <button class="img-sz-btn" onclick="setImgSize('right')"  title="오른쪽 정렬">▶</button>
+  <button class="img-sz-btn" onclick="setImgSize(100)">100%</button>
 </div>
 
 <!-- 자동완성 팝업 (#태그 / [[내부링크]]) -->
@@ -690,6 +686,23 @@
     };
   }
 
+  // ── 리사이즈 가능한 이미지 확장 ─────────────────────────
+  const ResizableImage = IMG.extend({
+    addAttributes() {
+      return {
+        ...this.parent?.(),
+        width: {
+          default: null,
+          parseHTML: el => el.style.width || el.getAttribute('width') || null,
+          renderHTML: attrs => {
+            if (!attrs.width) return {};
+            return { style: `width:${attrs.width}; max-width:100%; display:block` };
+          },
+        },
+      };
+    },
+  });
+
   // ── TipTap 초기화 ────────────────────────────────────────
   function initEditor() {
     if (editor) { editor.destroy(); editor = null; }
@@ -702,7 +715,7 @@
         HL.configure({ multicolor: true }),
         TS, CL,
         TL, TI.configure({ nested: true }),
-        IMG.configure({ inline: false, allowBase64: false }),
+        ResizableImage.configure({ inline: false, allowBase64: false }),
         LNK.configure({ openOnClick: false, HTMLAttributes: { target: '_blank' } }),
         TBL.configure({ resizable: true }), TR, TC, TH,
         PH.configure({ placeholder: '내용을 입력하세요...' }),
@@ -865,26 +878,13 @@
     updateToolbarState();
   };
 
-  // ── 이미지 크기 조절 (DOM 직접 방식) ──────────────────────
+  // ── 이미지 크기 조절 ─────────────────────────────────────
   window.setImgSize = function(val) {
-    const editorDom = document.getElementById('editorEl');
-    const img = editorDom.querySelector('img.ProseMirror-selectednode')
-             || editorDom.querySelector('img:hover')
-             || editorDom.querySelector('img');
-    if (!img) return;
-    if (typeof val === 'number') {
-      img.style.width = val + '%';
-      img.style.maxWidth = '100%';
-      img.style.display = 'block';
-    } else if (val === 'center') {
-      img.style.display = 'block'; img.style.margin = '8px auto';
-    } else if (val === 'right') {
-      img.style.display = 'block'; img.style.margin = '8px 0 8px auto';
-    } else if (val === 'left') {
-      img.style.display = 'block'; img.style.margin = '8px auto 8px 0';
+    if (!editor) return;
+    const width = typeof val === 'number' ? val + '%' : null;
+    if (width) {
+      editor.chain().focus().updateAttributes('image', { width }).run();
     }
-    // TipTap에 변경 알리기
-    if (editor) editor.commands.focus();
     document.querySelectorAll('.img-sz-btn').forEach(b => b.classList.remove('active'));
     const key = typeof val === 'number' ? val : `'${val}'`;
     const btn = document.querySelector(`.img-sz-btn[onclick="setImgSize(${key})"]`);
@@ -932,7 +932,12 @@
     showToast('업로드 중...');
     const url = await uploadImage(file);
     if (url && editor) {
-      editor.chain().focus().setImage({ src: url }).run();
+      editor.chain()
+        .focus()
+        .setImage({ src: url })
+        .insertContentAt(editor.state.doc.content.size, { type: 'paragraph' })
+        .focus(editor.state.doc.content.size)
+        .run();
       showToast('이미지 추가됐습니다 ✓');
     }
     fileInput.value = '';
@@ -946,8 +951,15 @@
         e.preventDefault();
         showToast('업로드 중...');
         const url = await uploadImage(item.getAsFile());
-        if (url && editor) editor.chain().focus().setImage({ src: url }).run();
-        if (url) showToast('이미지 추가됐습니다 ✓');
+        if (url && editor) {
+          editor.chain()
+            .focus()
+            .setImage({ src: url })
+            .insertContentAt(editor.state.doc.content.size, { type: 'paragraph' })
+            .focus(editor.state.doc.content.size)
+            .run();
+          showToast('이미지 추가됐습니다 ✓');
+        }
         return;
       }
     }
