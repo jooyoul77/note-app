@@ -256,6 +256,49 @@
     .toast.show { transform: translateX(-50%) translateY(0); }
     .toast.err { border-color: var(--danger); color: var(--danger); }
 
+    /* ── #태그 노드 ──────────────────────────── */
+    .tag-mention {
+      display: inline-block; background: rgba(240,165,0,0.15);
+      color: var(--accent); border-radius: 4px; padding: 1px 6px;
+      font-size: 0.88em; font-weight: 600; cursor: pointer; transition: background 0.15s;
+    }
+    .tag-mention:hover { background: rgba(240,165,0,0.28); }
+
+    /* ── [[내부링크]] 노드 ───────────────────── */
+    .internal-link-mention {
+      color: #64b5f6; border-bottom: 1px solid rgba(100,181,246,0.5);
+      cursor: pointer; padding: 0 2px; transition: background 0.15s;
+    }
+    .internal-link-mention:hover { background: rgba(100,181,246,0.1); border-radius: 3px; }
+
+    /* ── 자동완성 팝업 ───────────────────────── */
+    .suggestion-popup {
+      position: fixed; z-index: 500; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 10px; padding: 5px;
+      min-width: 200px; max-width: 300px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6); display: none;
+    }
+    .suggestion-popup.show { display: block; }
+    .suggestion-popup-header { font-size: 10px; color: var(--text-muted); padding: 4px 8px 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .suggestion-item {
+      display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+      border-radius: 6px; font-size: 13px; color: var(--text-muted);
+      cursor: pointer; transition: background 0.1s, color 0.1s;
+    }
+    .suggestion-item:hover, .suggestion-item.selected { background: var(--surface2); color: var(--text); }
+    .sug-icon { font-size: 12px; width: 16px; text-align: center; flex-shrink: 0; color: var(--accent); }
+
+    /* ── 태그 필터 바 ────────────────────────── */
+    .tag-bar { padding: 8px 20px 4px; display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+    .tag-bar:empty { display: none; }
+    .tag-chip {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 20px;
+      color: var(--text-muted); font-family: 'Noto Sans KR', sans-serif;
+      font-size: 11px; padding: 3px 10px; cursor: pointer; transition: all 0.15s;
+    }
+    .tag-chip:hover { border-color: var(--accent); color: var(--accent); }
+    .tag-chip.active { background: rgba(240,165,0,0.15); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
     /* ── 모바일 ──────────────────────────────── */
     @media (max-width: 600px) {
       header { padding: 11px 14px; }
@@ -354,6 +397,9 @@
     <button class="sort-btn" onclick="toggleSort()">🕐 최신순</button>
     <span class="count" id="count">0개</span>
   </div>
+
+  <!-- 태그 필터 바 -->
+  <div class="tag-bar" id="tagBar"></div>
 
   <div class="notes" id="notes"></div>
   <button class="fab" onclick="openModal()" title="새 노트">＋</button>
@@ -470,6 +516,9 @@
     <div class="ctx-item" onclick="execCmd('table'); hideCtxMenu()"><span class="ctx-icon">⊞</span>표 삽입</div>
   </div>
 </div>
+<!-- 자동완성 팝업 (#태그 / [[내부링크]]) -->
+<div class="suggestion-popup" id="suggestionPopup"></div>
+
 <div class="toast" id="toast"></div>
 
 <script type="module">
@@ -491,6 +540,7 @@
   const { default: TC }   = await import(`${BASE}/extension-table-cell@2.11.5`);
   const { default: TH }   = await import(`${BASE}/extension-table-header@2.11.5`);
   const { default: PH }   = await import(`${BASE}/extension-placeholder@2.11.5`);
+  const { default: MN }   = await import(`${BASE}/extension-mention@2.11.5`);
 
   // ── Supabase ─────────────────────────────────────────────
   const sb = window.supabase.createClient(
@@ -528,6 +578,87 @@
   let isLoginMode   = true;
   let activeThemeId = localStorage.getItem('theme') || 'dark';
   let editor        = null;
+  let activeTagFilter = null;
+
+  // ── 태그 추출 ────────────────────────────────────────────
+  function extractTagsFromHtml(html) {
+    if (!html) return [];
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    const nodes = div.querySelectorAll('[data-type="tag"]');
+    return [...nodes].map(n => n.getAttribute('data-label') || '').filter(Boolean);
+  }
+
+  // ── 태그 필터 바 렌더링 ──────────────────────────────────
+  function renderTagBar() {
+    const allTags = [...new Set(notes.flatMap(n => extractTagsFromHtml(n.content)))];
+    const bar = document.getElementById('tagBar');
+    if (!allTags.length) { bar.innerHTML = ''; return; }
+    bar.innerHTML = allTags.map(t => `
+      <button class="tag-chip ${activeTagFilter === t ? 'active' : ''}"
+              onclick="window.filterByTag('${t}')">#${t}</button>
+    `).join('');
+  }
+
+  window.filterByTag = function(tag) {
+    activeTagFilter = (activeTagFilter === tag) ? null : tag;
+    renderTagBar();
+    renderNotes();
+  };
+
+  // ── 자동완성 팝업 렌더러 ─────────────────────────────────
+  function makeSuggestionRenderer(type) {
+    let selectedIndex = 0;
+    let currentProps  = null;
+    const popup = document.getElementById('suggestionPopup');
+
+    function draw() {
+      if (!currentProps?.items?.length) { popup.classList.remove('show'); return; }
+      const label = type === 'tag' ? '# 태그' : '[[  노트 링크';
+      popup.innerHTML = `<div class="suggestion-popup-header">${label}</div>` +
+        currentProps.items.map((item, i) => `
+          <div class="suggestion-item ${i === selectedIndex ? 'selected' : ''}" data-i="${i}">
+            <span class="sug-icon">${type === 'tag' ? '#' : '📝'}</span>
+            ${escHtml(item.label)}
+          </div>
+        `).join('');
+      popup.querySelectorAll('.suggestion-item').forEach(el => {
+        el.addEventListener('mousedown', e => {
+          e.preventDefault();
+          const item = currentProps.items[+el.dataset.i];
+          if (item) currentProps.command({ id: item.id, label: item.label });
+          popup.classList.remove('show');
+        });
+      });
+      // 위치
+      try {
+        const { view } = currentProps.editor;
+        const { from }  = view.state.selection;
+        const coords    = view.coordsAtPos(from);
+        popup.style.left = Math.min(coords.left, window.innerWidth - 220) + 'px';
+        popup.style.top  = Math.min(coords.bottom + 6, window.innerHeight - 260) + 'px';
+      } catch {}
+      popup.classList.add('show');
+    }
+
+    return {
+      onStart:   p => { currentProps = p; selectedIndex = 0; draw(); },
+      onUpdate:  p => { currentProps = p; selectedIndex = 0; draw(); },
+      onExit:    () => { popup.classList.remove('show'); currentProps = null; },
+      onKeyDown: ({ event }) => {
+        if (!currentProps?.items?.length) return false;
+        if (event.key === 'ArrowUp')    { selectedIndex = Math.max(0, selectedIndex - 1); draw(); return true; }
+        if (event.key === 'ArrowDown')  { selectedIndex = Math.min(currentProps.items.length - 1, selectedIndex + 1); draw(); return true; }
+        if (event.key === 'Enter') {
+          const item = currentProps.items[selectedIndex];
+          if (item) currentProps.command({ id: item.id, label: item.label });
+          popup.classList.remove('show'); return true;
+        }
+        if (event.key === 'Escape') { popup.classList.remove('show'); return true; }
+        return false;
+      },
+    };
+  }
 
   // ── TipTap 초기화 ────────────────────────────────────────
   function initEditor() {
@@ -545,6 +676,34 @@
         LNK.configure({ openOnClick: false, HTMLAttributes: { target: '_blank' } }),
         TBL.configure({ resizable: true }), TR, TC, TH,
         PH.configure({ placeholder: '내용을 입력하세요...\n\n제목은 # 으로, 체크리스트는 툴바 ☑ 버튼으로 추가해보세요.' }),
+        // #태그
+        MN.extend({ name: 'tag' }).configure({
+          HTMLAttributes: { class: 'tag-mention' },
+          renderLabel: ({ node }) => '#' + node.attrs.label,
+          suggestion: {
+            char: '#', allowSpaces: false,
+            items: ({ query }) => {
+              const existing = [...new Set(notes.flatMap(n => extractTagsFromHtml(n.content)))]
+                .filter(t => t.toLowerCase().includes(query.toLowerCase())).slice(0, 7);
+              if (query && !existing.includes(query)) existing.unshift(query);
+              return existing.map(t => ({ id: t, label: t }));
+            },
+            render: () => makeSuggestionRenderer('tag'),
+          },
+        }),
+        // [[내부링크]]
+        MN.extend({ name: 'internalLink' }).configure({
+          HTMLAttributes: { class: 'internal-link-mention' },
+          renderLabel: ({ node }) => node.attrs.label,
+          suggestion: {
+            char: '[[', allowSpaces: true,
+            items: ({ query }) => notes
+              .filter(n => (n.title||'').toLowerCase().includes(query.toLowerCase()))
+              .slice(0, 8)
+              .map(n => ({ id: n.id, label: n.title || '제목 없음' })),
+            render: () => makeSuggestionRenderer('link'),
+          },
+        }),
       ],
       content: '',
       onUpdate: () => {
@@ -565,6 +724,20 @@
       },
       onFocus: () => { updateBubbleMenu(); },
       onBlur: () => { setTimeout(hideBubbleMenu, 200); },
+    });
+
+    // 에디터 내 #태그 / [[링크]] 클릭 핸들러
+    editor.view.dom.addEventListener('click', e => {
+      const tag  = e.target.closest('[data-type="tag"]');
+      const link = e.target.closest('[data-type="internalLink"]');
+      if (tag) {
+        const label = tag.getAttribute('data-label');
+        if (label) { window.closeModal(); window.filterByTag(label); }
+      }
+      if (link) {
+        const noteId = link.getAttribute('data-id');
+        if (noteId) window.openModal(noteId);
+      }
     });
   }
 
@@ -857,6 +1030,8 @@
     if (content.includes('data-type="taskList"') || content.includes('task-item')) return '☑️';
     if (content.includes('<pre') || content.includes('codeBlock')) return '💻';
     if (content.includes('<img')) return '🖼️';
+    if (content.includes('data-type="tag"')) return '🏷️';
+    if (content.includes('data-type="internalLink"')) return '🔗';
     if (content.includes('<h1') || content.includes('<h2')) return '📌';
     if (content.includes('<table')) return '📊';
     return '📝';
@@ -865,12 +1040,18 @@
   function renderNotes() {
     const q = document.getElementById('search').value.toLowerCase();
     const plain = n => stripHtml(n.content || '');
-    let filtered = notes.filter(n =>
-      plain(n).toLowerCase().includes(q) || (n.title||'').toLowerCase().includes(q)
-    );
+    let filtered = notes.filter(n => {
+      const matchSearch = plain(n).toLowerCase().includes(q) || (n.title||'').toLowerCase().includes(q);
+      if (!matchSearch) return false;
+      if (activeTagFilter) {
+        return extractTagsFromHtml(n.content).includes(activeTagFilter);
+      }
+      return true;
+    });
     if (!sortNewest) filtered = [...filtered].reverse();
 
     document.getElementById('count').textContent = notes.length + '개';
+    renderTagBar();
     const container = document.getElementById('notes');
 
     if (!filtered.length) {
