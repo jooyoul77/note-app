@@ -891,8 +891,9 @@
         updateToolbarState();
         checkLinkTrigger();
         clearTimeout(autoSaveTimer);
-        const text = editor.getText().trim();
-        if (text) {
+        const html = editor.getHTML();
+        const hasContent = html !== '<p></p>' && html.trim() !== '';
+        if (hasContent) {
           setModalStatus('typing');
           autoSaveTimer = setTimeout(autoSave, 2000);
         } else {
@@ -1239,11 +1240,13 @@
   async function autoSave() {
     if (!editor || !currentUser) return;
     const html  = editor.getHTML();
-    const plain = editor.getText().trim();
-    if (!plain) return;
+    const hasContent = html !== '<p></p>' && html.trim() !== '';
+    if (!hasContent) return;
     setModalStatus('saving');
-    const title = plain.split('\n')[0].trim().slice(0, 50) || '제목 없음';
-
+    const plain = editor.getText().trim();
+    const title = plain
+      ? plain.split('\n')[0].trim().slice(0, 50)
+      : (editor.state.doc.firstChild?.textContent || '제목 없음').slice(0, 50) || '노트';
     if (!currentNoteId) {
       const { data, error } = await sb.from('notes')
         .insert([{ title, content: html, user_id: currentUser.id, color: currentColor }])
