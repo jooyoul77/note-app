@@ -256,6 +256,23 @@
     .toast.show { transform: translateX(-50%) translateY(0); }
     .toast.err { border-color: var(--danger); color: var(--danger); }
 
+    /* ── 이미지 리사이즈 툴바 ───────────────── */
+    .img-resize-bar {
+      position: fixed; z-index: 400; display: none;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 4px 6px; gap: 4px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5); align-items: center;
+    }
+    .img-resize-bar.show { display: flex; }
+    .img-sz-btn {
+      background: none; border: 1px solid var(--border); border-radius: 5px;
+      color: var(--text-muted); font-size: 11px; padding: 3px 8px;
+      cursor: pointer; transition: all 0.15s; font-family: 'Noto Sans KR', sans-serif;
+    }
+    .img-sz-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .img-sz-btn.active { background: rgba(240,165,0,0.15); border-color: var(--accent); color: var(--accent); }
+    .img-sz-sep { width: 1px; background: var(--border); height: 14px; margin: 0 2px; }
+
     /* ── #태그 노드 ──────────────────────────── */
     .tag-mention {
       display: inline-block; background: rgba(240,165,0,0.15);
@@ -516,6 +533,20 @@
     <div class="ctx-item" onclick="execCmd('table'); hideCtxMenu()"><span class="ctx-icon">⊞</span>표 삽입</div>
   </div>
 </div>
+<!-- 이미지 리사이즈 툴바 -->
+<div class="img-resize-bar" id="imgResizeBar">
+  <span style="font-size:11px;color:var(--text-muted);margin-right:2px">크기</span>
+  <div class="img-sz-sep"></div>
+  <button class="img-sz-btn" onclick="setImgSize(25)">25%</button>
+  <button class="img-sz-btn" onclick="setImgSize(50)">50%</button>
+  <button class="img-sz-btn" onclick="setImgSize(75)">75%</button>
+  <button class="img-sz-btn" onclick="setImgSize(100)">전체</button>
+  <div class="img-sz-sep"></div>
+  <button class="img-sz-btn" onclick="setImgSize('left')"  title="왼쪽 정렬">◀</button>
+  <button class="img-sz-btn" onclick="setImgSize('center')" title="가운데">■</button>
+  <button class="img-sz-btn" onclick="setImgSize('right')"  title="오른쪽 정렬">▶</button>
+</div>
+
 <!-- 자동완성 팝업 (#태그 / [[내부링크]]) -->
 <div class="suggestion-popup" id="suggestionPopup"></div>
 
@@ -672,7 +703,15 @@
         HL.configure({ multicolor: true }),
         TS, CL,
         TL, TI.configure({ nested: true }),
-        IMG.configure({ inline: false, allowBase64: false }),
+        IMG.extend({
+          addAttributes() {
+            return {
+              ...this.parent?.(),
+              width: { default: null, renderHTML: attrs => attrs.width ? { style: `width:${attrs.width}; max-width:100%` } : {} },
+              align: { default: null, renderHTML: attrs => attrs.align ? { style: `display:block; margin:${attrs.align === 'center' ? '8px auto' : attrs.align === 'right' ? '8px 0 8px auto' : '8px auto 8px 0'}` } : {} },
+            };
+          },
+        }).configure({ inline: false, allowBase64: false }),
         LNK.configure({ openOnClick: false, HTMLAttributes: { target: '_blank' } }),
         TBL.configure({ resizable: true }), TR, TC, TH,
         PH.configure({ placeholder: '내용을 입력하세요...\n\n제목은 # 으로, 체크리스트는 툴바 ☑ 버튼으로 추가해보세요.' }),
@@ -724,6 +763,25 @@
       },
       onFocus: () => { updateBubbleMenu(); },
       onBlur: () => { setTimeout(hideBubbleMenu, 200); },
+    });
+
+    // 에디터 내 이미지 클릭 → 리사이즈 툴바
+    editor.view.dom.addEventListener('click', e => {
+      const img = e.target.closest('img');
+      const bar = document.getElementById('imgResizeBar');
+      if (img) {
+        const rect = img.getBoundingClientRect();
+        bar.style.left = rect.left + 'px';
+        bar.style.top  = (rect.bottom + 6) + 'px';
+        bar.classList.add('show');
+        // 현재 크기 표시
+        const curW = img.style.width || '';
+        bar.querySelectorAll('.img-sz-btn').forEach(b => b.classList.remove('active'));
+        const match = bar.querySelector(`[onclick="setImgSize(${parseInt(curW) || 100})"]`);
+        if (match) match.classList.add('active');
+      } else {
+        bar.classList.remove('show');
+      }
     });
 
     // 에디터 내 #태그 / [[링크]] 클릭 핸들러
@@ -844,12 +902,52 @@
     updateToolbarState();
   };
 
+  // ── 이미지 크기 조절 ─────────────────────────────────────
+  window.setImgSize = function(val) {
+    if (!editor) return;
+    if (typeof val === 'number') {
+      editor.chain().focus().updateAttributes('image', { width: val + '%' }).run();
+    } else {
+      editor.chain().focus().updateAttributes('image', { align: val }).run();
+    }
+    // 버튼 active 표시
+    document.querySelectorAll('.img-sz-btn').forEach(b => b.classList.remove('active'));
+    const target = document.querySelector(`.img-sz-btn[onclick="setImgSize(${typeof val === 'number' ? val : `'${val}'`})"]`);
+    if (target) target.classList.add('active');
+  };
+
+  // ── 이미지 압축 (업로드 전) ──────────────────────────────
+  async function compressImage(file, maxPx = 1920, quality = 0.85) {
+    return new Promise(resolve => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxPx || height > maxPx) {
+          if (width > height) { height = Math.round(height * maxPx / width); width = maxPx; }
+          else { width = Math.round(width * maxPx / height); height = maxPx; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        URL.revokeObjectURL(url);
+        // PNG면 png로, 아니면 jpeg 압축
+        const type = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+        canvas.toBlob(blob => resolve(blob || file), type, quality);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+
   // ── 이미지 업로드 ────────────────────────────────────────
   async function uploadImage(file) {
-    if (!file || file.size > 5000000) { showToast('5MB 이하만 가능해요', true); return null; }
-    const ext  = file.name?.split('.').pop() || 'png';
+    if (!file || file.size > 10000000) { showToast('10MB 이하만 가능해요', true); return null; }
+    showToast('압축 중...');
+    const compressed = await compressImage(file);
+    const ext  = file.type === 'image/png' ? 'png' : 'jpg';
     const path = `${currentUser.id}/${Date.now()}.${ext}`;
-    const { error } = await sb.storage.from('note-images').upload(path, file, { upsert: true });
+    const { error } = await sb.storage.from('note-images').upload(path, compressed, { upsert: true, contentType: compressed.type });
     if (error) { showToast('업로드 실패', true); return null; }
     return sb.storage.from('note-images').getPublicUrl(path).data.publicUrl;
   }
@@ -972,6 +1070,7 @@
   window.closeModal = function() {
     clearTimeout(autoSaveTimer);
     document.getElementById('modalOverlay').classList.remove('open');
+    document.getElementById('imgResizeBar').classList.remove('show');
     hideBubbleMenu();
     currentNoteId = null;
     renderNotes();
