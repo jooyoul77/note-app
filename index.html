@@ -576,7 +576,7 @@
 <script type="module">
   // ── TipTap imports ───────────────────────────────────────
   const BASE = 'https://esm.sh/@tiptap';
-  const { Editor }        = await import(`${BASE}/core@2.11.5`);
+  const { Editor, Node: TNode, InputRule, mergeAttributes } = await import(`${BASE}/core@2.11.5`);
   const { default: SK }   = await import(`${BASE}/starter-kit@2.11.5`);
   const { default: UL }   = await import(`${BASE}/extension-underline@2.11.5`);
   const { default: TA }   = await import(`${BASE}/extension-text-align@2.11.5`);
@@ -631,13 +631,74 @@
   let editor        = null;
   let activeTagFilter = null;
 
+  // ── [[링크]] 드롭다운 ────────────────────────────────────
+  let linkDropRange = null;
+
+  function checkLinkTrigger() {
+    if (!editor) return;
+    const { from } = editor.state.selection;
+    const before   = editor.state.doc.textBetween(Math.max(0, from - 80), from, null, '\ufffc');
+    const match    = before.match(/\[\[([^\]]*)$/);
+    if (match) {
+      showLinkDropdown(match[1], from - match[1].length - 2, from);
+    } else {
+      hideLinkDropdown();
+    }
+  }
+
+  function showLinkDropdown(query, triggerFrom, cursorPos) {
+    const filtered = notes
+      .filter(n => (n.title||'').toLowerCase().includes(query.toLowerCase()))
+      .slice(0, 8);
+    const popup = document.getElementById('suggestionPopup');
+    if (!filtered.length) { hideLinkDropdown(); return; }
+    popup.innerHTML = '<div class="suggestion-popup-header">[[  노트 링크</div>' +
+      filtered.map((n, i) => `
+        <div class="suggestion-item" data-i="${i}">
+          <span class="sug-icon">📝</span>${escHtml(n.title || '제목 없음')}
+        </div>
+      `).join('');
+    linkDropRange = { from: triggerFrom, to: cursorPos };
+    popup.querySelectorAll('.suggestion-item[data-i]').forEach(el => {
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        insertInternalLink(filtered[+el.dataset.i], linkDropRange.from, linkDropRange.to);
+      });
+    });
+    try {
+      const coords = editor.view.coordsAtPos(Math.min(cursorPos, editor.state.doc.content.size));
+      popup.style.left = Math.min(coords.left, window.innerWidth - 230) + 'px';
+      popup.style.top  = Math.min(coords.bottom + 6, window.innerHeight - 300) + 'px';
+    } catch {}
+    popup.classList.add('show');
+  }
+
+  function hideLinkDropdown() {
+    document.getElementById('suggestionPopup').classList.remove('show');
+    linkDropRange = null;
+  }
+
+  function insertInternalLink(note, from, to) {
+    editor.chain().focus()
+      .deleteRange({ from, to })
+      .insertContentAt(from, [
+        { type: 'internalLink', attrs: { id: note.id, label: note.title || '제목 없음' } },
+        { type: 'text', text: ' ' },
+      ]).run();
+    hideLinkDropdown();
+  }
+
   // ── 태그 추출 ────────────────────────────────────────────
   function extractTagsFromHtml(html) {
     if (!html) return [];
     const div = document.createElement('div');
     div.innerHTML = html;
-    const nodes = div.querySelectorAll('[data-type="tag"]');
-    return [...nodes].map(n => n.getAttribute('data-label') || '').filter(Boolean);
+    // TipTap Tag 노드 방식
+    const tagNodes = div.querySelectorAll('[data-type="tag"]');
+    if (tagNodes.length) return [...tagNodes].map(n => n.getAttribute('data-label') || '').filter(Boolean);
+    // 구 방식 폴백 (텍스트에서 #태그 추출)
+    const text = div.textContent || '';
+    return [...new Set((text.match(/#([\w가-힣]+)/g) || []).map(t => t.slice(1)))];
   }
 
   // ── 태그 필터 바 렌더링 ──────────────────────────────────
@@ -711,7 +772,61 @@
     };
   }
 
-  // ── 리사이즈 가능한 이미지 확장 ─────────────────────────
+  // ── #태그 노드 ───────────────────────────────────────────
+  const TagNode = TNode.create({
+    name: 'tag', group: 'inline', inline: true, atom: true, selectable: true,
+    addAttributes() {
+      return {
+        label: {
+          default: null,
+          parseHTML:  el   => el.getAttribute('data-label'),
+          renderHTML: attrs => ({ 'data-label': attrs.label }),
+        },
+      };
+    },
+    parseHTML()  { return [{ tag: 'span[data-type="tag"]' }]; },
+    renderHTML({ node }) {
+      return ['span', {
+        'data-type': 'tag', 'data-label': node.attrs.label, class: 'tag-mention',
+      }, '#' + (node.attrs.label || '')];
+    },
+    addInputRules() {
+      return [
+        new InputRule({
+          find: /#([\w가-힣]+)\s$/,
+          handler({ state, range, match, chain }) {
+            const label = match[1];
+            chain()
+              .deleteRange(range)
+              .insertContentAt(range.from, [
+                { type: 'tag', attrs: { label } },
+                { type: 'text', text: ' ' },
+              ]).run();
+          },
+        }),
+      ];
+    },
+  });
+
+  // ── [[내부링크]] 노드 ────────────────────────────────────
+  const InternalLinkNode = TNode.create({
+    name: 'internalLink', group: 'inline', inline: true, atom: true, selectable: true,
+    addAttributes() {
+      return {
+        id:    { default: null, parseHTML: el => el.getAttribute('data-id'),    renderHTML: attrs => ({ 'data-id':    attrs.id    }) },
+        label: { default: null, parseHTML: el => el.getAttribute('data-label'), renderHTML: attrs => ({ 'data-label': attrs.label }) },
+      };
+    },
+    parseHTML()  { return [{ tag: 'span[data-type="internalLink"]' }]; },
+    renderHTML({ node }) {
+      return ['span', {
+        'data-type': 'internalLink', 'data-id': node.attrs.id,
+        'data-label': node.attrs.label, class: 'internal-link-mention',
+      }, '[[' + (node.attrs.label || '') + ']]'];
+    },
+  });
+
+  // ── TipTap 초기화 ────────────────────────────────────────
   const ResizableImage = IMG.extend({
     addAttributes() {
       return {
@@ -744,11 +859,14 @@
         LNK.configure({ openOnClick: false, HTMLAttributes: { target: '_blank' } }),
         TBL.configure({ resizable: true }), TR, TC, TH,
         PH.configure({ placeholder: '내용을 입력하세요...' }),
+        TagNode,
+        InternalLinkNode,
       ],
       content: '',
       onUpdate: () => {
         updateCharCount();
         updateToolbarState();
+        checkLinkTrigger();
         clearTimeout(autoSaveTimer);
         const text = editor.getText().trim();
         if (text) {
@@ -878,15 +996,22 @@
     editor.view.dom.addEventListener('click', e => {
       const tag  = e.target.closest('[data-type="tag"]');
       const link = e.target.closest('[data-type="internalLink"]');
-      if (tag) {
-        const label = tag.getAttribute('data-label');
-        if (label) { window.closeModal(); window.filterByTag(label); }
-      }
-      if (link) {
-        const noteId = link.getAttribute('data-id');
-        if (noteId) window.openModal(noteId);
-      }
+      if (tag)  { const l = tag.getAttribute('data-label');  if (l) { window.closeModal(); window.filterByTag(l); } }
+      if (link) { const id = link.getAttribute('data-id');   if (id) window.openModal(id); }
     });
+
+    // [[ 드롭다운 키보드 내비게이션
+    editor.view.dom.addEventListener('keydown', e => {
+      const popup = document.getElementById('suggestionPopup');
+      if (!popup.classList.contains('show')) return;
+      const items = [...popup.querySelectorAll('.suggestion-item[data-i]')];
+      const sel   = popup.querySelector('.suggestion-item.selected');
+      const idx   = sel ? +sel.dataset.i : -1;
+      if (e.key === 'ArrowDown')  { e.preventDefault(); const n = Math.min(items.length-1, idx+1); items.forEach((el,i) => el.classList.toggle('selected', i===n)); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); const n = Math.max(0, idx-1); items.forEach((el,i) => el.classList.toggle('selected', i===n)); }
+      else if (e.key === 'Enter' && idx >= 0) { e.preventDefault(); items[idx].dispatchEvent(new MouseEvent('mousedown')); }
+      else if (e.key === 'Escape') hideLinkDropdown();
+    }, true);
   }
 
   function updateCharCount() {
