@@ -1011,44 +1011,6 @@
       document.getElementById('userEmail').textContent = currentUser.email;
       document.getElementById('authScreen').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
-      // ── 우클릭 컨텍스트 메뉴 ─────────────────────────────────
-window.hideCtxMenu = function() {
-  document.getElementById('ctxMenu').classList.remove('show');
-};
-
-document.getElementById('editorEl').addEventListener('contextmenu', e => {
-  e.preventDefault();
-  const menu = document.getElementById('ctxMenu');
-  const inTable = editor && editor.isActive('table');
-  document.getElementById('ctxTableSection').style.display  = inTable ? 'block' : 'none';
-  document.getElementById('ctxGeneralSection').style.display = inTable ? 'none'  : 'block';
-  const x = Math.min(e.clientX, window.innerWidth  - 210);
-  const y = Math.min(e.clientY, window.innerHeight - 350);
-  menu.style.left = Math.max(8, x) + 'px';
-  menu.style.top  = Math.max(8, y) + 'px';
-  menu.classList.add('show');
-});
-
-document.addEventListener('click',   () => window.hideCtxMenu());
-document.addEventListener('keydown', e => { if (e.key === 'Escape') window.hideCtxMenu(); });
-
-window.ctxCmd = function(cmd) {
-  window.hideCtxMenu();
-  if (!editor) return;
-  const c = editor.chain().focus();
-  switch(cmd) {
-    case 'addRowBefore':    c.addRowBefore().run();    break;
-    case 'addRowAfter':     c.addRowAfter().run();     break;
-    case 'deleteRow':       c.deleteRow().run();       break;
-    case 'addColumnBefore': c.addColumnBefore().run(); break;
-    case 'addColumnAfter':  c.addColumnAfter().run();  break;
-    case 'deleteColumn':    c.deleteColumn().run();    break;
-    case 'mergeCells':      c.mergeCells().run();      break;
-    case 'splitCell':       c.splitCell().run();       break;
-    case 'toggleHeaderRow': c.toggleHeaderRow().run(); break;
-    case 'deleteTable':     c.deleteTable().run();     break;
-  }
-};
       loadSavedTheme();
       loadNotes();
       initEditor();
@@ -1059,6 +1021,45 @@ window.ctxCmd = function(cmd) {
       document.getElementById('app').style.display = 'none';
     }
   });
+
+  // ── 우클릭 컨텍스트 메뉴 (auth 밖에서 한 번만 등록) ──────
+  window.hideCtxMenu = function() {
+    document.getElementById('ctxMenu').classList.remove('show');
+  };
+
+  document.getElementById('editorEl').addEventListener('contextmenu', e => {
+    e.preventDefault();
+    const menu    = document.getElementById('ctxMenu');
+    const inTable = editor && editor.isActive('table');
+    document.getElementById('ctxTableSection').style.display   = inTable ? 'block' : 'none';
+    document.getElementById('ctxGeneralSection').style.display = inTable ? 'none'  : 'block';
+    const x = Math.min(e.clientX, window.innerWidth  - 210);
+    const y = Math.min(e.clientY, window.innerHeight - 360);
+    menu.style.left = Math.max(8, x) + 'px';
+    menu.style.top  = Math.max(8, y) + 'px';
+    menu.classList.add('show');
+  });
+
+  document.addEventListener('click',   ()  => window.hideCtxMenu());
+  document.addEventListener('keydown', e   => { if (e.key === 'Escape') window.hideCtxMenu(); });
+
+  window.ctxCmd = function(cmd) {
+    window.hideCtxMenu();
+    if (!editor) return;
+    const c = editor.chain().focus();
+    switch(cmd) {
+      case 'addRowBefore':    c.addRowBefore().run();    break;
+      case 'addRowAfter':     c.addRowAfter().run();     break;
+      case 'deleteRow':       c.deleteRow().run();       break;
+      case 'addColumnBefore': c.addColumnBefore().run(); break;
+      case 'addColumnAfter':  c.addColumnAfter().run();  break;
+      case 'deleteColumn':    c.deleteColumn().run();    break;
+      case 'mergeCells':      c.mergeCells().run();      break;
+      case 'splitCell':       c.splitCell().run();       break;
+      case 'toggleHeaderRow': c.toggleHeaderRow().run(); break;
+      case 'deleteTable':     c.deleteTable().run();     break;
+    }
+  };
 
   loadSavedTheme();
 </script>
