@@ -571,7 +571,6 @@
   const { default: TC }   = await import(`${BASE}/extension-table-cell@2.11.5`);
   const { default: TH }   = await import(`${BASE}/extension-table-header@2.11.5`);
   const { default: PH }   = await import(`${BASE}/extension-placeholder@2.11.5`);
-  const { default: MN }   = await import(`${BASE}/extension-mention@2.11.5`);
 
   // ── Supabase ─────────────────────────────────────────────
   const sb = window.supabase.createClient(
@@ -703,55 +702,10 @@
         HL.configure({ multicolor: true }),
         TS, CL,
         TL, TI.configure({ nested: true }),
-        IMG.extend({
-          addAttributes() {
-            return {
-              ...this.parent?.(),
-              style: {
-                default: null,
-                parseHTML: el => el.getAttribute('style') || null,
-                renderHTML: attrs => attrs.style ? { style: attrs.style } : {},
-              },
-            };
-          },
-          parseHTML() {
-            return [{ tag: 'img[src]' }];
-          },
-          renderHTML({ HTMLAttributes }) {
-            return ['img', HTMLAttributes];
-          },
-        }).configure({ inline: false, allowBase64: false }),
+        IMG.configure({ inline: false, allowBase64: false }),
         LNK.configure({ openOnClick: false, HTMLAttributes: { target: '_blank' } }),
         TBL.configure({ resizable: true }), TR, TC, TH,
-        PH.configure({ placeholder: '내용을 입력하세요...\n\n제목은 # 으로, 체크리스트는 툴바 ☑ 버튼으로 추가해보세요.' }),
-        // #태그
-        MN.extend({ name: 'tag' }).configure({
-          HTMLAttributes: { class: 'tag-mention' },
-          renderLabel: ({ node }) => '#' + node.attrs.label,
-          suggestion: {
-            char: '#', allowSpaces: false,
-            items: ({ query }) => {
-              const existing = [...new Set(notes.flatMap(n => extractTagsFromHtml(n.content)))]
-                .filter(t => t.toLowerCase().includes(query.toLowerCase())).slice(0, 7);
-              if (query && !existing.includes(query)) existing.unshift(query);
-              return existing.map(t => ({ id: t, label: t }));
-            },
-            render: () => makeSuggestionRenderer('tag'),
-          },
-        }),
-        // [[내부링크]]
-        MN.extend({ name: 'internalLink' }).configure({
-          HTMLAttributes: { class: 'internal-link-mention' },
-          renderLabel: ({ node }) => node.attrs.label,
-          suggestion: {
-            char: '[[', allowSpaces: true,
-            items: ({ query }) => notes
-              .filter(n => (n.title||'').toLowerCase().includes(query.toLowerCase()))
-              .slice(0, 8)
-              .map(n => ({ id: n.id, label: n.title || '제목 없음' })),
-            render: () => makeSuggestionRenderer('link'),
-          },
-        }),
+        PH.configure({ placeholder: '내용을 입력하세요...' }),
       ],
       content: '',
       onUpdate: () => {
@@ -911,16 +865,26 @@
     updateToolbarState();
   };
 
-  // ── 이미지 크기 조절 ─────────────────────────────────────
+  // ── 이미지 크기 조절 (DOM 직접 방식) ──────────────────────
   window.setImgSize = function(val) {
-    if (!editor) return;
-    let style = '';
+    const editorDom = document.getElementById('editorEl');
+    const img = editorDom.querySelector('img.ProseMirror-selectednode')
+             || editorDom.querySelector('img:hover')
+             || editorDom.querySelector('img');
+    if (!img) return;
     if (typeof val === 'number') {
-      style = `width:${val}%; max-width:100%; display:block`;
-    } else if (val === 'left')   { style = 'width:50%; max-width:100%; display:block; margin:8px 0'; }
-    else if (val === 'center')   { style = 'width:60%; max-width:100%; display:block; margin:8px auto'; }
-    else if (val === 'right')    { style = 'width:50%; max-width:100%; display:block; margin:8px 0 8px auto'; }
-    editor.chain().focus().updateAttributes('image', { style }).run();
+      img.style.width = val + '%';
+      img.style.maxWidth = '100%';
+      img.style.display = 'block';
+    } else if (val === 'center') {
+      img.style.display = 'block'; img.style.margin = '8px auto';
+    } else if (val === 'right') {
+      img.style.display = 'block'; img.style.margin = '8px 0 8px auto';
+    } else if (val === 'left') {
+      img.style.display = 'block'; img.style.margin = '8px auto 8px 0';
+    }
+    // TipTap에 변경 알리기
+    if (editor) editor.commands.focus();
     document.querySelectorAll('.img-sz-btn').forEach(b => b.classList.remove('active'));
     const key = typeof val === 'number' ? val : `'${val}'`;
     const btn = document.querySelector(`.img-sz-btn[onclick="setImgSize(${key})"]`);
