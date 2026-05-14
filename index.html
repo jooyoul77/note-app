@@ -294,6 +294,10 @@
     .img-sz-btn.active { background: rgba(240,165,0,0.15); border-color: var(--accent); color: var(--accent); }
     .img-sz-sep { width: 1px; background: var(--border); height: 14px; margin: 0 2px; }
 
+    /* atom 노드 선택 핸들 제거 */
+    .ProseMirror [data-type="tag"],
+    .ProseMirror [data-type="internalLink"] { outline: none !important; }
+
     /* ── #태그 노드 ──────────────────────────── */
     .tag-mention {
       display: inline-block; background: rgba(240,165,0,0.15);
@@ -823,6 +827,25 @@
         'data-type': 'internalLink', 'data-id': node.attrs.id,
         'data-label': node.attrs.label, class: 'internal-link-mention',
       }, '[[' + (node.attrs.label || '') + ']]'];
+    },
+    addInputRules() {
+      return [
+        new InputRule({
+          find: /\[\[([^\]]+)\]\]$/,
+          handler({ state, range, match, chain }) {
+            const label = match[1];
+            const note  = notes.find(n =>
+              (n.title || '').toLowerCase() === label.toLowerCase()
+            );
+            chain()
+              .deleteRange(range)
+              .insertContentAt(range.from, [
+                { type: 'internalLink', attrs: { id: note?.id || null, label } },
+                { type: 'text', text: ' ' },
+              ]).run();
+          },
+        }),
+      ];
     },
   });
 
