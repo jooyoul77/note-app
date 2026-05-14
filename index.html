@@ -267,6 +267,25 @@
       .note-color-wrap { display: none; }
       .theme-panel { right: 10px; width: 240px; }
     }
+    /* ── 우클릭 컨텍스트 메뉴 ── */
+.ctx-menu {
+  position: fixed; z-index: 300;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 6px; min-width: 190px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: none;
+}
+.ctx-menu.show { display: block; }
+.ctx-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px; border-radius: 6px; font-size: 13px;
+  color: var(--text-muted); cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.ctx-item:hover { background: var(--surface2); color: var(--text); }
+.ctx-item.danger:hover { color: var(--danger); }
+.ctx-icon { font-size: 13px; width: 20px; text-align: center; flex-shrink: 0; }
+.ctx-divider { border: none; border-top: 1px solid var(--border); margin: 4px 0; }  
   </style>
 </head>
 <body>
@@ -401,7 +420,39 @@
   <div class="fmt-sep" style="margin:2px 3px"></div>
   <button class="bubble-btn" onclick="execCmd('link')" title="링크">🔗</button>
 </div>
-
+<!-- 우클릭 컨텍스트 메뉴 -->
+<div class="ctx-menu" id="ctxMenu">
+  <div id="ctxTableSection">
+    <div class="ctx-item" onclick="ctxCmd('addRowBefore')"><span class="ctx-icon">↑</span>위에 행 추가</div>
+    <div class="ctx-item" onclick="ctxCmd('addRowAfter')"><span class="ctx-icon">↓</span>아래에 행 추가</div>
+    <div class="ctx-item danger" onclick="ctxCmd('deleteRow')"><span class="ctx-icon">✕</span>행 삭제</div>
+    <hr class="ctx-divider">
+    <div class="ctx-item" onclick="ctxCmd('addColumnBefore')"><span class="ctx-icon">←</span>왼쪽에 열 추가</div>
+    <div class="ctx-item" onclick="ctxCmd('addColumnAfter')"><span class="ctx-icon">→</span>오른쪽에 열 추가</div>
+    <div class="ctx-item danger" onclick="ctxCmd('deleteColumn')"><span class="ctx-icon">✕</span>열 삭제</div>
+    <hr class="ctx-divider">
+    <div class="ctx-item" onclick="ctxCmd('mergeCells')"><span class="ctx-icon">⊞</span>셀 병합</div>
+    <div class="ctx-item" onclick="ctxCmd('splitCell')"><span class="ctx-icon">⊟</span>셀 분할</div>
+    <div class="ctx-item" onclick="ctxCmd('toggleHeaderRow')"><span class="ctx-icon">H</span>헤더 행 토글</div>
+    <hr class="ctx-divider">
+    <div class="ctx-item danger" onclick="ctxCmd('deleteTable')"><span class="ctx-icon">🗑</span>표 삭제</div>
+  </div>
+  <div id="ctxGeneralSection">
+    <div class="ctx-item" onclick="execCmd('bold'); hideCtxMenu()"><span class="ctx-icon"><b>B</b></span>굵게</div>
+    <div class="ctx-item" onclick="execCmd('italic'); hideCtxMenu()"><span class="ctx-icon"><i>I</i></span>기울임</div>
+    <div class="ctx-item" onclick="execCmd('underline'); hideCtxMenu()"><span class="ctx-icon"><u>U</u></span>밑줄</div>
+    <div class="ctx-item" onclick="execCmd('highlight'); hideCtxMenu()"><span class="ctx-icon">🖍</span>하이라이트</div>
+    <hr class="ctx-divider">
+    <div class="ctx-item" onclick="execCmd('h1'); hideCtxMenu()"><span class="ctx-icon">H1</span>제목</div>
+    <div class="ctx-item" onclick="execCmd('h2'); hideCtxMenu()"><span class="ctx-icon">H2</span>소제목</div>
+    <hr class="ctx-divider">
+    <div class="ctx-item" onclick="execCmd('ul'); hideCtxMenu()"><span class="ctx-icon">•</span>목록</div>
+    <div class="ctx-item" onclick="execCmd('ol'); hideCtxMenu()"><span class="ctx-icon">1.</span>번호 목록</div>
+    <div class="ctx-item" onclick="execCmd('task'); hideCtxMenu()"><span class="ctx-icon">☑</span>체크리스트</div>
+    <hr class="ctx-divider">
+    <div class="ctx-item" onclick="execCmd('table'); hideCtxMenu()"><span class="ctx-icon">⊞</span>표 삽입</div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script type="module">
@@ -943,6 +994,44 @@
       document.getElementById('userEmail').textContent = currentUser.email;
       document.getElementById('authScreen').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
+      // ── 우클릭 컨텍스트 메뉴 ─────────────────────────────────
+window.hideCtxMenu = function() {
+  document.getElementById('ctxMenu').classList.remove('show');
+};
+
+document.getElementById('editorEl').addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const menu = document.getElementById('ctxMenu');
+  const inTable = editor && editor.isActive('table');
+  document.getElementById('ctxTableSection').style.display  = inTable ? 'block' : 'none';
+  document.getElementById('ctxGeneralSection').style.display = inTable ? 'none'  : 'block';
+  const x = Math.min(e.clientX, window.innerWidth  - 210);
+  const y = Math.min(e.clientY, window.innerHeight - 350);
+  menu.style.left = Math.max(8, x) + 'px';
+  menu.style.top  = Math.max(8, y) + 'px';
+  menu.classList.add('show');
+});
+
+document.addEventListener('click',   () => window.hideCtxMenu());
+document.addEventListener('keydown', e => { if (e.key === 'Escape') window.hideCtxMenu(); });
+
+window.ctxCmd = function(cmd) {
+  window.hideCtxMenu();
+  if (!editor) return;
+  const c = editor.chain().focus();
+  switch(cmd) {
+    case 'addRowBefore':    c.addRowBefore().run();    break;
+    case 'addRowAfter':     c.addRowAfter().run();     break;
+    case 'deleteRow':       c.deleteRow().run();       break;
+    case 'addColumnBefore': c.addColumnBefore().run(); break;
+    case 'addColumnAfter':  c.addColumnAfter().run();  break;
+    case 'deleteColumn':    c.deleteColumn().run();    break;
+    case 'mergeCells':      c.mergeCells().run();      break;
+    case 'splitCell':       c.splitCell().run();       break;
+    case 'toggleHeaderRow': c.toggleHeaderRow().run(); break;
+    case 'deleteTable':     c.deleteTable().run();     break;
+  }
+};
       loadSavedTheme();
       loadNotes();
       initEditor();
