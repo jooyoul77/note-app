@@ -707,9 +707,18 @@
           addAttributes() {
             return {
               ...this.parent?.(),
-              width: { default: null, renderHTML: attrs => attrs.width ? { style: `width:${attrs.width}; max-width:100%` } : {} },
-              align: { default: null, renderHTML: attrs => attrs.align ? { style: `display:block; margin:${attrs.align === 'center' ? '8px auto' : attrs.align === 'right' ? '8px 0 8px auto' : '8px auto 8px 0'}` } : {} },
+              style: {
+                default: null,
+                parseHTML: el => el.getAttribute('style') || null,
+                renderHTML: attrs => attrs.style ? { style: attrs.style } : {},
+              },
             };
+          },
+          parseHTML() {
+            return [{ tag: 'img[src]' }];
+          },
+          renderHTML({ HTMLAttributes }) {
+            return ['img', HTMLAttributes];
           },
         }).configure({ inline: false, allowBase64: false }),
         LNK.configure({ openOnClick: false, HTMLAttributes: { target: '_blank' } }),
@@ -905,15 +914,17 @@
   // ── 이미지 크기 조절 ─────────────────────────────────────
   window.setImgSize = function(val) {
     if (!editor) return;
+    let style = '';
     if (typeof val === 'number') {
-      editor.chain().focus().updateAttributes('image', { width: val + '%' }).run();
-    } else {
-      editor.chain().focus().updateAttributes('image', { align: val }).run();
-    }
-    // 버튼 active 표시
+      style = `width:${val}%; max-width:100%; display:block`;
+    } else if (val === 'left')   { style = 'width:50%; max-width:100%; display:block; margin:8px 0'; }
+    else if (val === 'center')   { style = 'width:60%; max-width:100%; display:block; margin:8px auto'; }
+    else if (val === 'right')    { style = 'width:50%; max-width:100%; display:block; margin:8px 0 8px auto'; }
+    editor.chain().focus().updateAttributes('image', { style }).run();
     document.querySelectorAll('.img-sz-btn').forEach(b => b.classList.remove('active'));
-    const target = document.querySelector(`.img-sz-btn[onclick="setImgSize(${typeof val === 'number' ? val : `'${val}'`})"]`);
-    if (target) target.classList.add('active');
+    const key = typeof val === 'number' ? val : `'${val}'`;
+    const btn = document.querySelector(`.img-sz-btn[onclick="setImgSize(${key})"]`);
+    if (btn) btn.classList.add('active');
   };
 
   // ── 이미지 압축 (업로드 전) ──────────────────────────────
