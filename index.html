@@ -286,6 +286,23 @@
 .ctx-item.danger:hover { color: var(--danger); }
 .ctx-icon { font-size: 13px; width: 20px; text-align: center; flex-shrink: 0; }
 .ctx-divider { border: none; border-top: 1px solid var(--border); margin: 4px 0; }  
+/* 표 컬럼 리사이즈 */
+.ProseMirror .column-resize-handle {
+  position: absolute; right: -2px; top: 0; bottom: -2px;
+  width: 4px; background: var(--accent);
+  pointer-events: none; z-index: 20;
+  opacity: 0; transition: opacity 0.2s;
+}
+
+.ProseMirror table:hover .column-resize-handle { opacity: 1; }
+.ProseMirror.resize-cursor { cursor: col-resize; }
+
+/* 표 셀 overflow 처리 */
+.ProseMirror table td,
+.ProseMirror table th {
+  position: relative;
+  overflow: hidden;
+}
   </style>
 </head>
 <body>
