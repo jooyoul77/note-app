@@ -768,7 +768,7 @@
   let linkDropRange = null;
 
   // ── 노트 콘텐츠 캐시 (링크 노드 보존용) ─────────────────
-  const noteCache = new Map(); // noteId → JSON string
+  const noteCache = new Map();
 
   function cacheCurrentNote() {
     if (!currentNoteId || !editor) return;
@@ -780,6 +780,7 @@
     noteCache.set(currentNoteId, { content, title });
     const idx = notes.findIndex(n => n.id === currentNoteId);
     if (idx !== -1) { notes[idx].content = content; notes[idx].title = title; }
+    console.log('📦 cacheCurrentNote:', currentNoteId.slice(-6), '| internalLink:', content.includes('"internalLink"'), '| 길이:', content.length);
     return { content, title };
   }
 
@@ -787,7 +788,9 @@
     const cached = cacheCurrentNote();
     if (!cached || !currentNoteId) return;
     clearTimeout(autoSaveTimer);
+    console.log('💾 saveCurrentNote (await DB):', currentNoteId.slice(-6));
     await sb.from('notes').update({ content: cached.content, title: cached.title, updated_at: new Date().toISOString() }).eq('id', currentNoteId);
+    console.log('✅ DB 저장 완료:', currentNoteId.slice(-6));
   }
 
   // ── 이미지 리사이즈 모듈 변수 ───────────────────────────
@@ -1014,15 +1017,17 @@
         const id    = link.getAttribute('data-id');
         const label = link.getAttribute('data-label') || '';
 
-        // null / "null" / 빈 값 → 연결된 노트 없음
+        console.log('🔗 링크 클릭:', { id, label, currentNoteId: currentNoteId?.slice(-6) });
+
         if (!id || id === 'null') {
+          console.warn('⚠️ id가 null - 연결된 노트 없음');
           showToast(`"${label}" 노트를 찾을 수 없어요`, true);
           return;
         }
-        if (id === currentNoteId) return;
+        if (id === currentNoteId) { console.log('같은 노트 - 스킵'); return; }
 
-        // ── 저장 완료 후 이동 ──────────────────────────────
-        await saveCurrentNote(); // cacheCurrentNote + await DB save
+        await saveCurrentNote();
+        console.log('🚀 openLinkedNote 호출:', id.slice(-6));
         openLinkedNote(id);
       }
     });
@@ -1290,13 +1295,12 @@
   function openNote(noteId, fromLink = false) {
     if (!editor) initEditor();
     hideImgUI();
+    console.log('📂 openNote:', noteId?.slice(-6), '| fromLink:', fromLink, '| 현재:', currentNoteId?.slice(-6));
 
-    // ── 이동 전 현재 노트 캐시 + 저장 ──────────────────────
     clearTimeout(autoSaveTimer);
     if (currentNoteId && editor) {
-      const cached = cacheCurrentNote(); // notes 배열 + noteCache 동기 업데이트
+      const cached = cacheCurrentNote();
       if (cached) {
-        // DB 비동기 저장 (await 없이 - click handler에서 이미 await 했음)
         sb.from('notes').update({ content: cached.content, title: cached.title, updated_at: new Date().toISOString() }).eq('id', currentNoteId);
       }
     }
@@ -1308,20 +1312,24 @@
     if (!fromLink) navStack = [];
     currentNoteId = noteId;
     const note = notes.find(n => n.id === noteId);
-    if (!note) return;
+    if (!note) { console.warn('⚠️ note 없음:', noteId); return; }
     currentColor = note.color || null;
 
-    // 캐시 우선 로드 → notes 배열 → DB 원본 순서
     const cachedData = noteCache.get(noteId);
     const raw = (cachedData?.content) || note.content || '';
+    console.log('📖 노트 로드:', noteId?.slice(-6), '| 캐시에서:', !!cachedData, '| internalLink:', raw.includes('"internalLink"') || raw.includes('data-type="internalLink"'), '| 길이:', raw.length);
+
     let loadContent;
     try {
       const parsed = JSON.parse(raw);
       loadContent = parsed;
+      console.log('📋 JSON 파싱 성공, 노드수:', JSON.stringify(parsed).match(/"type"/g)?.length);
     } catch {
       loadContent = raw.trim().startsWith('<') ? raw : `<p>${raw.replace(/\n/g,'</p><p>')}</p>`;
+      console.log('📋 HTML/텍스트로 로드');
     }
     editor.commands.setContent(loadContent);
+    console.log('✅ setContent 완료 | 에디터 내 internalLink:', editor.getHTML().includes('data-type="internalLink"'));
     setStatus('');
     buildColorPicker();
     showEditorPanel(true);
