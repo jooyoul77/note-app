@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>노트</title>
   <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tui-image-editor@3.15.3/dist/tui-image-editor.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/tui-image-editor@3.15.3/dist/tui-image-editor.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#f0a500">
@@ -395,6 +397,41 @@
     .ctx-icon { font-size: 13px; width: 20px; text-align: center; flex-shrink: 0; }
     .ctx-divider { border: none; border-top: 1px solid var(--hover); margin: 4px 0; }
 
+    /* ── 이미지 편집기 모달 ──────────────────── */
+    .img-editor-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+      z-index: 600; display: none; align-items: center; justify-content: center;
+    }
+    .img-editor-overlay.open { display: flex; }
+    .img-editor-box {
+      background: #1a1a1a; border-radius: 14px;
+      width: 90vw; max-width: 960px; height: 85vh;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .img-editor-header {
+      padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
+      background: #111; flex-shrink: 0;
+    }
+    .img-editor-title { font-size: 14px; font-weight: 500; color: #e0e0e0; }
+    .img-editor-btns  { display: flex; gap: 8px; }
+    .img-editor-save {
+      background: #f0a500; color: #000; border: none; border-radius: 8px;
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      padding: 7px 16px; cursor: pointer; transition: opacity 0.15s;
+    }
+    .img-editor-save:hover { opacity: 0.88; }
+    .img-editor-close {
+      background: none; border: none; color: #666; font-size: 18px;
+      cursor: pointer; padding: 4px 8px; border-radius: 6px; line-height: 1;
+      transition: color 0.15s;
+    }
+    .img-editor-close:hover { color: #e05252; }
+    #tuiEditorContainer { flex: 1; overflow: hidden; }
+
+    /* tui 에디터 내부 오버라이드 */
+    .tui-image-editor-container { background: #1a1a1a !important; }
+    .tui-image-editor-header { display: none !important; }
+
     /* ── 이미지 리사이즈 오버레이 ───────────────── */
     .img-overlay {
       position: fixed; z-index: 350; display: none; pointer-events: none;
@@ -642,6 +679,22 @@
   <button class="img-sz-btn" onclick="setImgSize(75)">75%</button>
   <button class="img-sz-btn" onclick="setImgSize(100)">100%</button>
   <button class="img-sz-btn" onclick="setImgSize('ratio')" title="비율 유지">⊡</button>
+  <div style="width:1px;background:var(--hover);height:14px;margin:0 4px"></div>
+  <button class="img-sz-btn" onclick="openImgEditor()" style="color:var(--accent)">✏️ 편집</button>
+</div>
+
+<!-- Toast UI 이미지 편집기 모달 -->
+<div class="img-editor-overlay" id="imgEditorOverlay">
+  <div class="img-editor-box">
+    <div class="img-editor-header">
+      <span class="img-editor-title">✏️ 이미지 편집</span>
+      <div class="img-editor-btns">
+        <button class="img-editor-save" onclick="saveEditedImage()">저장</button>
+        <button class="img-editor-close" onclick="closeImgEditor()">✕</button>
+      </div>
+    </div>
+    <div id="tuiEditorContainer"></div>
+  </div>
 </div>
 
 <!-- 자동완성 팝업 -->
@@ -1380,10 +1433,112 @@
   // 컨텍스트 메뉴 외부 클릭
   window.hideCtxMenu = function() { document.getElementById('ctxMenu').classList.remove('show'); };
 
-  // ── 모듈 함수 window 등록 (onclick에서 호출 가능하게) ────
-  window.openNote   = openNote;
-  window.renderList = renderList;
+  // ── 모듈 함수 window 등록 ────────────────────────────────
+  window.openNote    = openNote;
+  window.renderList  = renderList;
   window.filterByTag = filterByTag;
+
+  // ── Toast UI 이미지 편집기 ───────────────────────────────
+  let tuiInstance = null;
+
+  window.openImgEditor = function() {
+    if (!selectedImg) return;
+    const overlay = document.getElementById('imgEditorOverlay');
+    overlay.classList.add('open');
+
+    // 기존 인스턴스 제거
+    if (tuiInstance) { try { tuiInstance.destroy(); } catch {} tuiInstance = null; }
+    document.getElementById('tuiEditorContainer').innerHTML = '<div id="tuiCanvas" style="height:100%"></div>';
+
+    setTimeout(() => {
+      try {
+        tuiInstance = new tui.ImageEditor('#tuiCanvas', {
+          includeUI: {
+            loadImage: { path: selectedImg.src, name: '이미지' },
+            theme: {
+              'common.backgroundColor': '#1a1a1a',
+              'header.backgroundColor': '#111',
+              'downloadButton.backgroundColor': '#f0a500',
+              'downloadButton.borderColor': '#f0a500',
+              'downloadButton.color': '#000',
+              'menu.backgroundColor': '#161616',
+              'submenu.backgroundColor': '#1a1a1a',
+              'submenu.partition.color': '#333',
+              'submenu.normalLabel.color': '#888',
+              'submenu.activeLabel.color': '#f0a500',
+              'checkbox.border': '1px solid #555',
+              'checkbox.backgroundColor': '#222',
+              'range.pointer.color': '#f0a500',
+              'range.bar.color': '#333',
+              'range.subbar.color': '#f0a500',
+              'range.value.color': '#888',
+              'range.value.border': '1px solid #333',
+              'range.value.backgroundColor': '#111',
+              'range.title.color': '#888',
+              'colorpicker.title.color': '#888',
+            },
+            menu: ['crop', 'flip', 'rotate', 'draw', 'shape', 'text', 'filter'],
+            initMenu: '',
+            uiSize: { width: '100%', height: '100%' },
+            menuBarPosition: 'bottom',
+          },
+          usageStatistics: false,
+        });
+      } catch(e) {
+        showToast('이미지 편집기 로드 실패', true);
+        closeImgEditor();
+      }
+    }, 100);
+  };
+
+  window.saveEditedImage = async function() {
+    if (!tuiInstance || !selectedImg) return;
+    const saveBtn = document.querySelector('.img-editor-save');
+    saveBtn.textContent = '저장 중...'; saveBtn.disabled = true;
+
+    try {
+      const dataURL = tuiInstance.toDataURL({ format: 'jpeg', quality: 0.92 });
+      const res  = await fetch(dataURL);
+      const blob = await res.blob();
+      const path = `${currentUser.id}/${Date.now()}.jpg`;
+
+      const { error } = await sb.storage.from('note-images').upload(path, blob, {
+        upsert: true, contentType: 'image/jpeg'
+      });
+      if (error) throw error;
+
+      const newUrl = sb.storage.from('note-images').getPublicUrl(path).data.publicUrl;
+
+      // TipTap 이미지 src 업데이트
+      if (editor) {
+        editor.state.doc.descendants((node, pos) => {
+          if (node.type.name === 'image' && node.attrs.src === selectedImg.src) {
+            editor.chain().focus().setNodeSelection(pos).updateAttributes('image', { src: newUrl, style: null }).run();
+          }
+        });
+      }
+      selectedImg.src = newUrl;
+      closeImgEditor();
+      showToast('이미지가 저장됐습니다 ✓');
+    } catch(e) {
+      showToast('저장 실패: ' + (e.message || ''), true);
+    } finally {
+      saveBtn.textContent = '저장'; saveBtn.disabled = false;
+    }
+  };
+
+  window.closeImgEditor = function() {
+    document.getElementById('imgEditorOverlay').classList.remove('open');
+    if (tuiInstance) { try { tuiInstance.destroy(); } catch {} tuiInstance = null; }
+    document.getElementById('tuiEditorContainer').innerHTML = '';
+  };
+
+  // ESC로 편집기 닫기
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('imgEditorOverlay').classList.contains('open')) {
+      closeImgEditor();
+    }
+  });
 </script>
 </body>
 </html>
