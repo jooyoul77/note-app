@@ -1189,23 +1189,28 @@
 
   async function autoSave() {
     if (!editor || !currentUser) return;
-    const html = editor.getHTML();
-    const hasContent = html !== '<p></p>' && html.trim() !== '';
+    const content = JSON.stringify(editor.getJSON()); // JSON 저장 (링크노드 보장)
+    const hasContent = editor.getText().trim() !== '' || content.includes('"internalLink"') || content.includes('"tag"');
     if (!hasContent) return;
     setStatus('saving');
     const plain = editor.getText().trim();
     const title = plain ? plain.split('\n')[0].trim().slice(0,50) : '제목 없음';
 
     if (!currentNoteId) {
-      const { data, error } = await sb.from('notes').insert([{ title, content: html, user_id: currentUser.id, color: currentColor }]).select().single();
+      const { data, error } = await sb.from('notes')
+        .insert([{ title, content, user_id: currentUser.id, color: currentColor }])
+        .select().single();
       if (error) { setStatus('error'); return; }
       currentNoteId = data.id;
       notes.unshift(data);
     } else {
-      const { data, error } = await sb.from('notes').update({ title, content: html, updated_at: new Date().toISOString(), color: currentColor }).eq('id', currentNoteId).select().single();
+      const { error } = await sb.from('notes')
+        .update({ title, content, updated_at: new Date().toISOString(), color: currentColor })
+        .eq('id', currentNoteId);
       if (error) { setStatus('error'); return; }
+      // notes 배열은 이미 openNote에서 동기 업데이트됨 — DB 응답으로 덮어쓰지 않음
       const idx = notes.findIndex(n => n.id === currentNoteId);
-      if (idx !== -1) notes[idx] = data;
+      if (idx !== -1) { notes[idx].content = content; notes[idx].title = title; }
     }
     setStatus('saved');
     renderList();
@@ -1255,16 +1260,14 @@
     clearTimeout(autoSaveTimer);
     if (currentNoteId && editor) {
       const saveId = currentNoteId;
-      const html   = editor.getHTML();
-      const hasContent = html !== '<p></p>' && html.trim() !== '';
+      const content = JSON.stringify(editor.getJSON()); // JSON 저장 (링크노드 완벽 보존)
+      const plain = editor.getText().trim();
+      const hasContent = plain !== '' || content.includes('"internalLink"') || content.includes('"tag"') || content.includes('"image"');
       if (hasContent) {
-        const plain = editor.getText().trim();
         const title = plain ? plain.split('\n')[0].trim().slice(0, 50) : '제목 없음';
-        // notes 배열 먼저 동기 업데이트 (링크 노드 유실 방지)
         const idx = notes.findIndex(n => n.id === saveId);
-        if (idx !== -1) { notes[idx].content = html; notes[idx].title = title; }
-        // DB 비동기 저장
-        sb.from('notes').update({ content: html, title, updated_at: new Date().toISOString() }).eq('id', saveId);
+        if (idx !== -1) { notes[idx].content = content; notes[idx].title = title; }
+        sb.from('notes').update({ content, title, updated_at: new Date().toISOString() }).eq('id', saveId);
       }
     }
 
@@ -1277,8 +1280,18 @@
     const note = notes.find(n => n.id === noteId);
     if (!note) return;
     currentColor = note.color || null;
-    const content = note.content || '';
-    editor.commands.setContent(content.trim().startsWith('<') ? content : `<p>${content.replace(/\n/g,'</p><p>')}</p>`);
+
+    // JSON / HTML / 마크다운 자동 감지 로드
+    const raw = note.content || '';
+    let loadContent;
+    try {
+      const parsed = JSON.parse(raw);
+      loadContent = parsed; // TipTap JSON
+    } catch {
+      // HTML 또는 plain text
+      loadContent = raw.trim().startsWith('<') ? raw : `<p>${raw.replace(/\n/g,'</p><p>')}</p>`;
+    }
+    editor.commands.setContent(loadContent);
     setStatus('');
     buildColorPicker();
     showEditorPanel(true);
