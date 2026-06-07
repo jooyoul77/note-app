@@ -978,18 +978,41 @@
       positionOverlay(selectedImg);
     });
 
-    // 태그/링크 클릭 (더블클릭 방지 + 같은 노트면 스킵)
+    // 태그/링크 클릭 (더블클릭 방지 + null id 체크 + async 저장 후 이동)
     let lastLinkClick = 0;
-    editor.view.dom.addEventListener('click', e => {
+    editor.view.dom.addEventListener('click', async e => {
       const tag  = e.target.closest('[data-type="tag"]');
       const link = e.target.closest('[data-type="internalLink"]');
       if (tag) { const l = tag.getAttribute('data-label'); if (l) filterByTag(l); }
       if (link) {
         const now = Date.now();
-        if (now - lastLinkClick < 400) return; // 더블클릭 방지
+        if (now - lastLinkClick < 400) return;
         lastLinkClick = now;
-        const id = link.getAttribute('data-id');
-        if (id && id !== currentNoteId) openLinkedNote(id);
+        const id    = link.getAttribute('data-id');
+        const label = link.getAttribute('data-label') || '';
+
+        // null / "null" / 빈 값 → 연결된 노트 없음
+        if (!id || id === 'null') {
+          showToast(`"${label}" 노트를 찾을 수 없어요`, true);
+          return;
+        }
+        if (id === currentNoteId) return;
+
+        // ── 저장 완료 후 이동 (await) ──────────────────
+        clearTimeout(autoSaveTimer);
+        if (currentNoteId && editor) {
+          const saveId = currentNoteId;
+          const content = JSON.stringify(editor.getJSON());
+          const plain   = editor.getText().trim();
+          const hasContent = plain !== '' || content.includes('"internalLink"') || content.includes('"tag"') || content.includes('"image"');
+          if (hasContent) {
+            const title = plain ? plain.split('\n')[0].trim().slice(0,50) : '제목 없음';
+            const idx = notes.findIndex(n => n.id === saveId);
+            if (idx !== -1) { notes[idx].content = content; notes[idx].title = title; }
+            await sb.from('notes').update({ content, title, updated_at: new Date().toISOString() }).eq('id', saveId);
+          }
+        }
+        openLinkedNote(id);
       }
     });
 
