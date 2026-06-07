@@ -1379,6 +1379,11 @@
 
   // 컨텍스트 메뉴 외부 클릭
   window.hideCtxMenu = function() { document.getElementById('ctxMenu').classList.remove('show'); };
+
+  // ── 모듈 함수 window 등록 (onclick에서 호출 가능하게) ────
+  window.openNote   = openNote;
+  window.renderList = renderList;
+  window.filterByTag = filterByTag;
 </script>
 </body>
 </html>
