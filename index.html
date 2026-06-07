@@ -683,6 +683,35 @@
   let navStack      = [];
   let editor        = null;
   let linkDropRange = null;
+
+  // ── 이미지 리사이즈 모듈 변수 ───────────────────────────
+  let selectedImg = null, resizeDir = null;
+  let rsStartX = 0, rsStartY = 0, rsStartW = 0, rsStartH = 0;
+
+  function positionOverlay(img) {
+    if (!img) return;
+    const overlay = document.getElementById('imgOverlay');
+    const rsBar   = document.getElementById('imgResizeBar');
+    const r = img.getBoundingClientRect();
+    overlay.style.left   = r.left   + 'px';
+    overlay.style.top    = r.top    + 'px';
+    overlay.style.width  = r.width  + 'px';
+    overlay.style.height = r.height + 'px';
+    rsBar.style.left = r.left + 'px';
+    rsBar.style.top  = (r.bottom + 6) + 'px';
+    rsBar.classList.add('show');
+  }
+
+  function applyImgResize(img, w, h) {
+    img.style.width    = w + 'px';
+    img.style.height   = h + 'px';
+    img.style.maxWidth = 'none';
+    img.style.display  = 'block';
+    if (editor) editor.chain().focus().updateAttributes('image', {
+      style: `width:${w}px; height:${h}px; max-width:none; display:block`
+    }).run();
+    if (selectedImg === img) positionOverlay(img);
+  }
   let isDark        = localStorage.getItem('theme') !== 'light';
 
   const NOTE_COLORS = [
@@ -792,24 +821,9 @@
     });
 
     // ── 이미지 리사이즈 오버레이 (8방향) ───────────────────
-    let selectedImg = null, resizeDir = null;
-    let rsStartX = 0, rsStartY = 0, rsStartW = 0, rsStartH = 0, rsStartL = 0, rsStartT = 0;
     const overlay = document.getElementById('imgOverlay');
     const rsTip   = document.getElementById('imgSizeTip');
     const rsBar   = document.getElementById('imgResizeBar');
-
-    function positionOverlay(img) {
-      if (!img) return;
-      const r = img.getBoundingClientRect();
-      overlay.style.left   = r.left   + 'px';
-      overlay.style.top    = r.top    + 'px';
-      overlay.style.width  = r.width  + 'px';
-      overlay.style.height = r.height + 'px';
-      // 버튼 바 위치
-      rsBar.style.left = r.left + 'px';
-      rsBar.style.top  = (r.bottom + 6) + 'px';
-      rsBar.classList.add('show');
-    }
 
     // 이미지 클릭 → 오버레이 표시
     editor.view.dom.addEventListener('click', e => {
@@ -881,23 +895,19 @@
       positionOverlay(selectedImg);
     });
 
-    function applyImgResize(img, w, h) {
-      img.style.width    = w + 'px';
-      img.style.height   = h + 'px';
-      img.style.maxWidth = 'none';
-      img.style.display  = 'block';
-      if (editor) editor.chain().focus().updateAttributes('image', {
-        style: `width:${w}px; height:${h}px; max-width:none; display:block`
-      }).run();
-      if (selectedImg === img) positionOverlay(img);
-    }
-
-    // 태그/링크 클릭
+    // 태그/링크 클릭 (더블클릭 방지 + 같은 노트면 스킵)
+    let lastLinkClick = 0;
     editor.view.dom.addEventListener('click', e => {
       const tag  = e.target.closest('[data-type="tag"]');
       const link = e.target.closest('[data-type="internalLink"]');
-      if (tag)  { const l = tag.getAttribute('data-label');  if (l) { filterByTag(l); } }
-      if (link) { const id = link.getAttribute('data-id');   if (id) openLinkedNote(id); }
+      if (tag) { const l = tag.getAttribute('data-label'); if (l) filterByTag(l); }
+      if (link) {
+        const now = Date.now();
+        if (now - lastLinkClick < 400) return; // 더블클릭 방지
+        lastLinkClick = now;
+        const id = link.getAttribute('data-id');
+        if (id && id !== currentNoteId) openLinkedNote(id);
+      }
     });
 
     // [[ 드롭다운 키보드
