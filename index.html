@@ -395,12 +395,41 @@
     .ctx-icon { font-size: 13px; width: 20px; text-align: center; flex-shrink: 0; }
     .ctx-divider { border: none; border-top: 1px solid var(--hover); margin: 4px 0; }
 
-    /* ── 이미지 리사이즈 ─────────────────────── */
-    .img-resize-handle { position: fixed; z-index: 350; width: 10px; height: 10px; background: var(--accent); border-radius: 50%; cursor: se-resize; display: none; box-shadow: 0 0 0 2px rgba(0,0,0,0.3); }
-    .img-resize-handle.show { display: block; }
-    .img-size-tip { position: fixed; z-index: 352; background: rgba(0,0,0,0.7); color: #fff; border-radius: 5px; padding: 3px 8px; font-size: 11px; pointer-events: none; display: none; }
+    /* ── 이미지 리사이즈 오버레이 ───────────────── */
+    .img-overlay {
+      position: fixed; z-index: 350; display: none; pointer-events: none;
+    }
+    .img-overlay.show { display: block; }
+    .img-overlay-border {
+      position: absolute; inset: -2px;
+      border: 2px solid var(--accent); border-radius: 3px; pointer-events: none;
+    }
+    .rh {
+      position: absolute; width: 14px; height: 14px;
+      background: #fff; border: 2px solid var(--accent);
+      border-radius: 50%; pointer-events: all;
+      transform: translate(-50%, -50%);
+    }
+    .rh:hover { background: var(--accent); transform: translate(-50%, -50%) scale(1.2); }
+    .rh-nw { left:0;   top:0;    cursor: nw-resize; }
+    .rh-n  { left:50%; top:0;    cursor: n-resize; }
+    .rh-ne { left:100%; top:0;   cursor: ne-resize; }
+    .rh-e  { left:100%; top:50%; cursor: e-resize; }
+    .rh-se { left:100%; top:100%;cursor: se-resize; }
+    .rh-s  { left:50%; top:100%; cursor: s-resize; }
+    .rh-sw { left:0;   top:100%; cursor: sw-resize; }
+    .rh-w  { left:0;   top:50%;  cursor: w-resize; }
+    .img-size-tip {
+      position: fixed; z-index: 360; background: rgba(0,0,0,0.75); color: #fff;
+      border-radius: 5px; padding: 3px 8px; font-size: 11px;
+      pointer-events: none; display: none; white-space: nowrap;
+    }
     .img-size-tip.show { display: block; }
-    .img-resize-bar { position: fixed; z-index: 400; display: none; background: var(--sidebar); border-radius: 8px; padding: 4px 6px; gap: 4px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); align-items: center; }
+    .img-resize-bar {
+      position: fixed; z-index: 400; display: none; background: var(--sidebar);
+      border-radius: 8px; padding: 4px 6px; gap: 4px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3); align-items: center;
+    }
     .img-resize-bar.show { display: flex; }
     .img-sz-btn { background: none; border: none; color: var(--text-2); font-size: 11px; padding: 3px 8px; border-radius: 5px; cursor: pointer; font-family: inherit; transition: background 0.12s, color 0.12s; }
     .img-sz-btn:hover { background: var(--hover); color: var(--text); }
@@ -593,15 +622,26 @@
   </div>
 </div>
 
-<!-- 이미지 리사이즈 -->
-<div id="imgResizeHandle" class="img-resize-handle"></div>
-<div id="imgSizeTip"      class="img-size-tip"></div>
+<!-- 이미지 리사이즈 오버레이 (8방향 핸들) -->
+<div class="img-overlay" id="imgOverlay">
+  <div class="img-overlay-border"></div>
+  <div class="rh rh-nw" data-dir="nw"></div>
+  <div class="rh rh-n"  data-dir="n"></div>
+  <div class="rh rh-ne" data-dir="ne"></div>
+  <div class="rh rh-e"  data-dir="e"></div>
+  <div class="rh rh-se" data-dir="se"></div>
+  <div class="rh rh-s"  data-dir="s"></div>
+  <div class="rh rh-sw" data-dir="sw"></div>
+  <div class="rh rh-w"  data-dir="w"></div>
+</div>
+<div id="imgSizeTip" class="img-size-tip"></div>
 <div class="img-resize-bar" id="imgResizeBar">
   <span style="font-size:11px;color:var(--text-2);margin-right:2px">크기</span>
   <button class="img-sz-btn" onclick="setImgSize(25)">25%</button>
   <button class="img-sz-btn" onclick="setImgSize(50)">50%</button>
   <button class="img-sz-btn" onclick="setImgSize(75)">75%</button>
   <button class="img-sz-btn" onclick="setImgSize(100)">100%</button>
+  <button class="img-sz-btn" onclick="setImgSize('ratio')" title="비율 유지">⊡</button>
 </div>
 
 <!-- 자동완성 팝업 -->
@@ -751,38 +791,106 @@
       onBlur:  () => setTimeout(hideBubbleMenu, 200),
     });
 
-    // 이미지 클릭 → 리사이즈 바
+    // ── 이미지 리사이즈 오버레이 (8방향) ───────────────────
+    let selectedImg = null, resizeDir = null;
+    let rsStartX = 0, rsStartY = 0, rsStartW = 0, rsStartH = 0, rsStartL = 0, rsStartT = 0;
+    const overlay = document.getElementById('imgOverlay');
+    const rsTip   = document.getElementById('imgSizeTip');
+    const rsBar   = document.getElementById('imgResizeBar');
+
+    function positionOverlay(img) {
+      if (!img) return;
+      const r = img.getBoundingClientRect();
+      overlay.style.left   = r.left   + 'px';
+      overlay.style.top    = r.top    + 'px';
+      overlay.style.width  = r.width  + 'px';
+      overlay.style.height = r.height + 'px';
+      // 버튼 바 위치
+      rsBar.style.left = r.left + 'px';
+      rsBar.style.top  = (r.bottom + 6) + 'px';
+      rsBar.classList.add('show');
+    }
+
+    // 이미지 클릭 → 오버레이 표시
     editor.view.dom.addEventListener('click', e => {
       const img = e.target.closest('img');
-      const bar = document.getElementById('imgResizeBar');
       if (img) {
-        const r = img.getBoundingClientRect();
-        bar.style.left = r.left + 'px'; bar.style.top = (r.bottom + 6) + 'px';
-        bar.classList.add('show');
-      } else { bar.classList.remove('show'); }
+        selectedImg = img;
+        positionOverlay(img);
+        overlay.classList.add('show');
+      } else if (!e.target.closest('#imgOverlay') && !e.target.closest('#imgResizeBar')) {
+        overlay.classList.remove('show');
+        rsBar.classList.remove('show');
+        selectedImg = null;
+      }
     });
 
-    // 이미지 드래그/스크롤 리사이즈
-    let hoverImg = null, resizingImg = null, rsStartX = 0, rsStartW = 0;
-    const rsHandle = document.getElementById('imgResizeHandle');
-    const rsTip    = document.getElementById('imgSizeTip');
-    function getEditorW() { return document.getElementById('editorEl').clientWidth - 64; }
-    function getPct(img)  { return Math.round(Math.min(100, Math.max(10, (img.offsetWidth / getEditorW()) * 100))); }
-    function showHandle(img) { if (!img) return; const r = img.getBoundingClientRect(); rsHandle.style.left = (r.right-6)+'px'; rsHandle.style.top = (r.bottom-6)+'px'; rsHandle.classList.add('show'); }
-    function showTip(img, pct) { const r = img.getBoundingClientRect(); rsTip.textContent = pct+'%'; rsTip.style.left = (r.right+8)+'px'; rsTip.style.top = (r.top+r.height/2-10)+'px'; rsTip.classList.add('show'); }
-    editor.view.dom.addEventListener('mouseover', e => { const img = e.target.closest('img'); if (img) { hoverImg = img; showHandle(img); } });
-    editor.view.dom.addEventListener('mouseout',  e => { if (!resizingImg) { rsHandle.classList.remove('show'); hoverImg = null; } });
+    // 핸들 드래그 시작
+    overlay.querySelectorAll('.rh').forEach(handle => {
+      handle.addEventListener('mousedown', e => {
+        e.preventDefault(); e.stopPropagation();
+        if (!selectedImg) return;
+        resizeDir = handle.dataset.dir;
+        rsStartX  = e.clientX; rsStartY = e.clientY;
+        rsStartW  = selectedImg.offsetWidth;
+        rsStartH  = selectedImg.offsetHeight;
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = getComputedStyle(handle).cursor;
+      });
+    });
+
+    // 스크롤로 리사이즈 (비율 유지)
     editor.view.dom.addEventListener('wheel', e => {
       const img = e.target.closest('img'); if (!img) return;
       e.preventDefault();
-      const newPct = Math.max(10, Math.min(100, getPct(img) + (e.deltaY < 0 ? 5 : -5)));
-      editor.chain().focus().updateAttributes('image', { width: newPct+'%' }).run();
-      showHandle(img); showTip(img, newPct);
-      clearTimeout(rsTip._t); rsTip._t = setTimeout(() => rsTip.classList.remove('show'), 900);
+      const ratio  = img.naturalHeight / img.naturalWidth;
+      const newW   = Math.max(50, img.offsetWidth + (e.deltaY < 0 ? 20 : -20));
+      const newH   = Math.round(newW * ratio);
+      applyImgResize(img, newW, newH);
     }, { passive: false });
-    rsHandle.addEventListener('mousedown', e => { e.preventDefault(); if (!hoverImg) return; resizingImg = hoverImg; rsStartX = e.clientX; rsStartW = resizingImg.offsetWidth; document.body.style.userSelect='none'; document.body.style.cursor='se-resize'; });
-    document.addEventListener('mousemove', e => { if (!resizingImg) return; const newPct = Math.round(Math.min(100, (Math.max(40, rsStartW + e.clientX - rsStartX) / getEditorW()) * 100)); resizingImg.style.width = newPct+'%'; showHandle(resizingImg); showTip(resizingImg, newPct); });
-    document.addEventListener('mouseup', () => { if (!resizingImg) return; editor.chain().focus().updateAttributes('image', { width: getPct(resizingImg)+'%' }).run(); document.body.style.userSelect=''; document.body.style.cursor=''; rsTip.classList.remove('show'); resizingImg=null; if(hoverImg) showHandle(hoverImg); });
+
+    // 드래그 중
+    document.addEventListener('mousemove', e => {
+      if (!resizeDir || !selectedImg) return;
+      const dx = e.clientX - rsStartX;
+      const dy = e.clientY - rsStartY;
+      let newW = rsStartW, newH = rsStartH;
+      if (resizeDir.includes('e'))  newW = Math.max(50, rsStartW + dx);
+      if (resizeDir.includes('w'))  newW = Math.max(50, rsStartW - dx);
+      if (resizeDir.includes('s'))  newH = Math.max(30, rsStartH + dy);
+      if (resizeDir.includes('n'))  newH = Math.max(30, rsStartH - dy);
+      selectedImg.style.width    = newW + 'px';
+      selectedImg.style.height   = newH + 'px';
+      selectedImg.style.maxWidth = 'none';
+      selectedImg.style.display  = 'block';
+      positionOverlay(selectedImg);
+      rsTip.textContent = `${Math.round(newW)} × ${Math.round(newH)}`;
+      rsTip.style.left = (e.clientX + 12) + 'px';
+      rsTip.style.top  = (e.clientY - 28) + 'px';
+      rsTip.classList.add('show');
+    });
+
+    // 드래그 끝 → TipTap에 저장
+    document.addEventListener('mouseup', () => {
+      if (!resizeDir || !selectedImg) return;
+      applyImgResize(selectedImg, selectedImg.offsetWidth, selectedImg.offsetHeight);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      rsTip.classList.remove('show');
+      resizeDir = null;
+      positionOverlay(selectedImg);
+    });
+
+    function applyImgResize(img, w, h) {
+      img.style.width    = w + 'px';
+      img.style.height   = h + 'px';
+      img.style.maxWidth = 'none';
+      img.style.display  = 'block';
+      if (editor) editor.chain().focus().updateAttributes('image', {
+        style: `width:${w}px; height:${h}px; max-width:none; display:block`
+      }).run();
+      if (selectedImg === img) positionOverlay(img);
+    }
 
     // 태그/링크 클릭
     editor.view.dom.addEventListener('click', e => {
@@ -903,10 +1011,23 @@
 
   // ── 이미지 크기 ──────────────────────────────────────────
   window.setImgSize = function(val) {
-    if (!editor) return;
-    editor.chain().focus().updateAttributes('image', { width: val+'%' }).run();
+    if (!editor || !selectedImg) return;
+    if (val === 'ratio') {
+      // 원본 비율로 복원
+      const ratio = selectedImg.naturalHeight / selectedImg.naturalWidth;
+      const w = selectedImg.offsetWidth;
+      applyImgResize(selectedImg, w, Math.round(w * ratio));
+    } else {
+      const editorW = document.getElementById('editorEl').clientWidth - 64;
+      const ratio   = selectedImg.naturalHeight / selectedImg.naturalWidth;
+      const newW    = Math.round(editorW * val / 100);
+      const newH    = Math.round(newW * ratio);
+      applyImgResize(selectedImg, newW, newH);
+    }
     document.querySelectorAll('.img-sz-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector(`.img-sz-btn[onclick="setImgSize(${val})"]`)?.classList.add('active');
+    if (typeof val === 'number') {
+      document.querySelector(`.img-sz-btn[onclick="setImgSize(${val})"]`)?.classList.add('active');
+    }
   };
 
   // ── 우클릭 메뉴 ──────────────────────────────────────────
@@ -1185,7 +1306,7 @@
         const date = formatDate(n.updated_at && n.updated_at !== n.created_at ? n.updated_at : n.created_at);
         const colorDot = n.color ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${n.color};margin-right:4px"></span>` : '';
         return `
-          <div class="note-item ${isActive?'active':''}" onclick="window._openNote('${n.id}')">
+          <div class="note-item ${isActive?'active':''}" onclick="openNote('${n.id}')">
             <div class="note-item-title">${escHtml(n.title||'제목 없음')}</div>
             <div class="note-item-meta">${colorDot}${date}</div>
             <button class="note-item-del" onclick="deleteNote('${n.id}', event)" title="삭제">✕</button>
@@ -1247,7 +1368,6 @@
   });
 
   // 컨텍스트 메뉴 외부 클릭
-  window._openNote = openNote;
   window.hideCtxMenu = function() { document.getElementById('ctxMenu').classList.remove('show'); };
 </script>
 </body>
