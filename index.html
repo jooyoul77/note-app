@@ -1185,7 +1185,7 @@
         const date = formatDate(n.updated_at && n.updated_at !== n.created_at ? n.updated_at : n.created_at);
         const colorDot = n.color ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${n.color};margin-right:4px"></span>` : '';
         return `
-          <div class="note-item ${isActive?'active':''}" onclick="openNote('${n.id}')">
+          <div class="note-item ${isActive?'active':''}" onclick="window._openNote('${n.id}')">
             <div class="note-item-title">${escHtml(n.title||'제목 없음')}</div>
             <div class="note-item-meta">${colorDot}${date}</div>
             <button class="note-item-del" onclick="deleteNote('${n.id}', event)" title="삭제">✕</button>
@@ -1247,6 +1247,7 @@
   });
 
   // 컨텍스트 메뉴 외부 클릭
+  window._openNote = openNote;
   window.hideCtxMenu = function() { document.getElementById('ctxMenu').classList.remove('show'); };
 </script>
 </body>
