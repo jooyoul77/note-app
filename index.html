@@ -1241,8 +1241,15 @@
   }
 
   // ── 노트 열기 ────────────────────────────────────────────
+  function hideImgUI() {
+    selectedImg = null;
+    document.getElementById('imgOverlay')?.classList.remove('show');
+    document.getElementById('imgResizeBar')?.classList.remove('show');
+  }
+
   function openNote(noteId, fromLink = false) {
     if (!editor) initEditor();
+    hideImgUI(); // 이미지 리사이즈 UI 숨기기
 
     // ── currentNoteId 바꾸기 전에 현재 노트 즉시 저장 ──
     clearTimeout(autoSaveTimer);
@@ -1252,12 +1259,12 @@
       const hasContent = html !== '<p></p>' && html.trim() !== '';
       if (hasContent) {
         const plain = editor.getText().trim();
-        const title = plain ? plain.split('\n')[0].trim().slice(0,50) : '제목 없음';
-        sb.from('notes').update({ content: html, title, updated_at: new Date().toISOString() })
-          .eq('id', saveId).then(() => {
-            const idx = notes.findIndex(n => n.id === saveId);
-            if (idx !== -1) { notes[idx].content = html; notes[idx].title = title; }
-          });
+        const title = plain ? plain.split('\n')[0].trim().slice(0, 50) : '제목 없음';
+        // notes 배열 먼저 동기 업데이트 (링크 노드 유실 방지)
+        const idx = notes.findIndex(n => n.id === saveId);
+        if (idx !== -1) { notes[idx].content = html; notes[idx].title = title; }
+        // DB 비동기 저장
+        sb.from('notes').update({ content: html, title, updated_at: new Date().toISOString() }).eq('id', saveId);
       }
     }
 
@@ -1284,6 +1291,7 @@
 
   window.newNote = function() {
     if (!editor) initEditor();
+    hideImgUI(); // 이미지 리사이즈 UI 숨기기
     navStack = [];
     currentNoteId = null;
     currentColor  = null;
@@ -1515,12 +1523,13 @@
     if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
     target.onload = () => {
       cropperInstance = new Cropper(target, {
-        viewMode: 1, autoCropArea: 1, movable: true,
-        zoomable: true, rotatable: true, scalable: true,
-        autoCrop: false, background: false,
+        viewMode: 1, autoCropArea: 1,
+        movable: true, zoomable: true, rotatable: true, scalable: true,
+        autoCrop: true, // 기본으로 전체 선택 → getCroppedCanvas 항상 동작
+        background: false,
       });
     };
-    if (target.complete) target.onload();
+    if (target.complete && target.naturalWidth > 0) target.onload();
   };
 
   window.cropperDo = function(action) {
@@ -1537,8 +1546,8 @@
         cropperInstance.scaleY(flipScaleY); break;
       case 'toggleCrop':
         cropMode = !cropMode;
-        if (cropMode) { cropperInstance.setAutoCropArea(0.8); cropperInstance.crop(); btn.style.background='#f0a500'; btn.style.color='#000'; }
-        else          { cropperInstance.clear(); btn.style.background=''; btn.style.color=''; }
+        if (cropMode) { btn.style.background='#f0a500'; btn.style.color='#000'; btn.textContent='✂ 적용'; }
+        else          { cropperInstance.reset(); btn.style.background=''; btn.style.color=''; btn.textContent='✂ 자르기'; }
         break;
       case 'reset':
         flipScaleX = 1; flipScaleY = 1; cropMode = false;
@@ -1573,10 +1582,12 @@
       const s = +document.getElementById('slSaturate').value;
       const hasFilter = b !== 0 || c !== 0 || s !== 0;
 
-      let canvas;
-      if (cropMode) canvas = cropperInstance.getCroppedCanvas();
-      else          canvas = cropperInstance.getCanvasData() ? cropperInstance.getCroppedCanvas({ width: selectedImg.naturalWidth, height: selectedImg.naturalHeight }) : null;
-
+      // 캔버스 생성 - autoCrop:true이므로 항상 getCroppedCanvas() 가능
+      let canvas = cropperInstance.getCroppedCanvas({
+        fillColor: '#fff',
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high',
+      });
       if (!canvas) throw new Error('캔버스 생성 실패');
 
       // CSS 필터를 canvas에 적용
