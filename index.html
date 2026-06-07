@@ -767,6 +767,29 @@
   let editor        = null;
   let linkDropRange = null;
 
+  // ── 노트 콘텐츠 캐시 (링크 노드 보존용) ─────────────────
+  const noteCache = new Map(); // noteId → JSON string
+
+  function cacheCurrentNote() {
+    if (!currentNoteId || !editor) return;
+    const content = JSON.stringify(editor.getJSON());
+    const plain   = editor.getText().trim();
+    const title   = plain ? plain.split('\n')[0].trim().slice(0,50) : '제목 없음';
+    const hasContent = plain !== '' || content.includes('"internalLink"') || content.includes('"tag"') || content.includes('"image"');
+    if (!hasContent) return;
+    noteCache.set(currentNoteId, { content, title });
+    const idx = notes.findIndex(n => n.id === currentNoteId);
+    if (idx !== -1) { notes[idx].content = content; notes[idx].title = title; }
+    return { content, title };
+  }
+
+  async function saveCurrentNote() {
+    const cached = cacheCurrentNote();
+    if (!cached || !currentNoteId) return;
+    clearTimeout(autoSaveTimer);
+    await sb.from('notes').update({ content: cached.content, title: cached.title, updated_at: new Date().toISOString() }).eq('id', currentNoteId);
+  }
+
   // ── 이미지 리사이즈 모듈 변수 ───────────────────────────
   let selectedImg = null, resizeDir = null;
   let rsStartX = 0, rsStartY = 0, rsStartW = 0, rsStartH = 0;
@@ -998,20 +1021,8 @@
         }
         if (id === currentNoteId) return;
 
-        // ── 저장 완료 후 이동 (await) ──────────────────
-        clearTimeout(autoSaveTimer);
-        if (currentNoteId && editor) {
-          const saveId = currentNoteId;
-          const content = JSON.stringify(editor.getJSON());
-          const plain   = editor.getText().trim();
-          const hasContent = plain !== '' || content.includes('"internalLink"') || content.includes('"tag"') || content.includes('"image"');
-          if (hasContent) {
-            const title = plain ? plain.split('\n')[0].trim().slice(0,50) : '제목 없음';
-            const idx = notes.findIndex(n => n.id === saveId);
-            if (idx !== -1) { notes[idx].content = content; notes[idx].title = title; }
-            await sb.from('notes').update({ content, title, updated_at: new Date().toISOString() }).eq('id', saveId);
-          }
-        }
+        // ── 저장 완료 후 이동 ──────────────────────────────
+        await saveCurrentNote(); // cacheCurrentNote + await DB save
         openLinkedNote(id);
       }
     });
@@ -1212,11 +1223,11 @@
 
   async function autoSave() {
     if (!editor || !currentUser) return;
-    const content = JSON.stringify(editor.getJSON()); // JSON 저장 (링크노드 보장)
-    const hasContent = editor.getText().trim() !== '' || content.includes('"internalLink"') || content.includes('"tag"');
+    const content = JSON.stringify(editor.getJSON());
+    const plain = editor.getText().trim();
+    const hasContent = plain !== '' || content.includes('"internalLink"') || content.includes('"tag"') || content.includes('"image"');
     if (!hasContent) return;
     setStatus('saving');
-    const plain = editor.getText().trim();
     const title = plain ? plain.split('\n')[0].trim().slice(0,50) : '제목 없음';
 
     if (!currentNoteId) {
@@ -1226,14 +1237,15 @@
       if (error) { setStatus('error'); return; }
       currentNoteId = data.id;
       notes.unshift(data);
+      noteCache.set(currentNoteId, { content, title });
     } else {
       const { error } = await sb.from('notes')
         .update({ title, content, updated_at: new Date().toISOString(), color: currentColor })
         .eq('id', currentNoteId);
       if (error) { setStatus('error'); return; }
-      // notes 배열은 이미 openNote에서 동기 업데이트됨 — DB 응답으로 덮어쓰지 않음
       const idx = notes.findIndex(n => n.id === currentNoteId);
       if (idx !== -1) { notes[idx].content = content; notes[idx].title = title; }
+      noteCache.set(currentNoteId, { content, title }); // 캐시도 업데이트
     }
     setStatus('saved');
     renderList();
@@ -1277,20 +1289,15 @@
 
   function openNote(noteId, fromLink = false) {
     if (!editor) initEditor();
-    hideImgUI(); // 이미지 리사이즈 UI 숨기기
+    hideImgUI();
 
-    // ── currentNoteId 바꾸기 전에 현재 노트 즉시 저장 ──
+    // ── 이동 전 현재 노트 캐시 + 저장 ──────────────────────
     clearTimeout(autoSaveTimer);
     if (currentNoteId && editor) {
-      const saveId = currentNoteId;
-      const content = JSON.stringify(editor.getJSON()); // JSON 저장 (링크노드 완벽 보존)
-      const plain = editor.getText().trim();
-      const hasContent = plain !== '' || content.includes('"internalLink"') || content.includes('"tag"') || content.includes('"image"');
-      if (hasContent) {
-        const title = plain ? plain.split('\n')[0].trim().slice(0, 50) : '제목 없음';
-        const idx = notes.findIndex(n => n.id === saveId);
-        if (idx !== -1) { notes[idx].content = content; notes[idx].title = title; }
-        sb.from('notes').update({ content, title, updated_at: new Date().toISOString() }).eq('id', saveId);
+      const cached = cacheCurrentNote(); // notes 배열 + noteCache 동기 업데이트
+      if (cached) {
+        // DB 비동기 저장 (await 없이 - click handler에서 이미 await 했음)
+        sb.from('notes').update({ content: cached.content, title: cached.title, updated_at: new Date().toISOString() }).eq('id', currentNoteId);
       }
     }
 
@@ -1304,14 +1311,14 @@
     if (!note) return;
     currentColor = note.color || null;
 
-    // JSON / HTML / 마크다운 자동 감지 로드
-    const raw = note.content || '';
+    // 캐시 우선 로드 → notes 배열 → DB 원본 순서
+    const cachedData = noteCache.get(noteId);
+    const raw = (cachedData?.content) || note.content || '';
     let loadContent;
     try {
       const parsed = JSON.parse(raw);
-      loadContent = parsed; // TipTap JSON
+      loadContent = parsed;
     } catch {
-      // HTML 또는 plain text
       loadContent = raw.trim().startsWith('<') ? raw : `<p>${raw.replace(/\n/g,'</p><p>')}</p>`;
     }
     editor.commands.setContent(loadContent);
