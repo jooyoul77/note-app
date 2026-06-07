@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>노트</title>
   <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tui-image-editor@3.15.3/dist/tui-image-editor.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/tui-image-editor@3.15.3/dist/tui-image-editor.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.1/dist/cropper.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.1/dist/cropper.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#f0a500">
@@ -445,38 +445,43 @@
     }
     .theme-toggle:hover { color: var(--text-2); }
 
-    /* ── 이미지 편집기 모달 ──────────────────── */
+    /* ── 이미지 편집기 ───────────────────────── */
     .img-editor-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+      position: fixed; inset: 0; background: rgba(0,0,0,0.9);
       z-index: 600; display: none; align-items: center; justify-content: center;
     }
     .img-editor-overlay.open { display: flex; }
     .img-editor-box {
       background: #111; border-radius: 14px;
-      width: 92vw; max-width: 980px; height: 88vh;
+      width: 92vw; max-width: 960px; height: 88vh;
       display: flex; flex-direction: column; overflow: hidden;
     }
-    .img-editor-header {
-      padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
-      background: #0d0d0d; flex-shrink: 0; border-bottom: 1px solid #222;
+    .img-editor-hdr {
+      padding: 11px 16px; display: flex; align-items: center;
+      justify-content: space-between; background: #0d0d0d; flex-shrink: 0;
     }
-    .img-editor-title { font-size: 14px; font-weight: 500; color: #e0e0e0; }
-    .img-editor-btns  { display: flex; gap: 8px; }
-    .img-editor-save {
-      background: #f0a500; color: #000; border: none; border-radius: 8px;
-      font-family: inherit; font-size: 13px; font-weight: 600;
-      padding: 7px 18px; cursor: pointer; transition: opacity 0.15s;
+    .img-editor-hdr span { font-size: 14px; font-weight: 500; color: #e0e0e0; }
+    .img-editor-canvas { flex: 1; overflow: hidden; background: #000; position: relative; display: flex; align-items: center; justify-content: center; }
+    .img-editor-canvas img { max-width: 100%; max-height: 100%; display: block; }
+    .img-editor-toolbar {
+      padding: 10px 16px; background: #0d0d0d; display: flex;
+      gap: 6px; align-items: center; flex-wrap: wrap; flex-shrink: 0;
     }
-    .img-editor-save:disabled { opacity: 0.6; cursor: not-allowed; }
-    .img-editor-save:not(:disabled):hover { opacity: 0.88; }
-    .img-editor-close {
-      background: none; border: none; color: #666; font-size: 18px;
-      cursor: pointer; padding: 4px 8px; border-radius: 6px; line-height: 1;
+    .ie-btn {
+      background: #222; border: none; color: #ccc; font-family: inherit;
+      font-size: 12px; padding: 6px 12px; border-radius: 7px; cursor: pointer;
+      transition: background 0.15s, color 0.15s;
     }
-    .img-editor-close:hover { color: #e05252; }
-    #tuiEditorContainer { flex: 1; overflow: hidden; position: relative; }
-    .tui-image-editor-container { background: #1a1a1a !important; }
-    .tui-image-editor-header { display: none !important; }
+    .ie-btn:hover { background: #333; color: #fff; }
+    .ie-btn.accent { background: #f0a500; color: #000; font-weight: 600; }
+    .ie-btn.accent:hover { opacity: 0.88; }
+    .ie-btn.close { background: none; color: #666; font-size: 18px; padding: 4px 8px; }
+    .ie-btn.close:hover { color: #e05252; }
+    .ie-sep { width: 1px; height: 20px; background: #333; margin: 0 4px; flex-shrink: 0; }
+    .ie-filter-row { display: flex; align-items: center; gap: 6px; }
+    .ie-filter-row label { font-size: 11px; color: #888; min-width: 28px; }
+    .ie-filter-row input[type="range"] { width: 80px; accent-color: #f0a500; }
+    .ie-filter-row span { font-size: 11px; color: #666; min-width: 26px; text-align: right; }
 
     /* ── 토스트 ──────────────────────────────── */
     .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--sidebar); border-radius: 10px; padding: 9px 18px; font-size: 13px; transition: transform 0.3s; z-index: 999; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
@@ -676,22 +681,49 @@
   <button class="img-sz-btn" onclick="setImgSize(50)">50%</button>
   <button class="img-sz-btn" onclick="setImgSize(75)">75%</button>
   <button class="img-sz-btn" onclick="setImgSize(100)">100%</button>
-  <button class="img-sz-btn" onclick="setImgSize('ratio')" title="비율 유지">⊡</button>
+  <button class="img-sz-btn" onclick="setImgSize('ratio')">⊡</button>
   <div style="width:1px;background:var(--hover);height:14px;margin:0 4px;flex-shrink:0"></div>
   <button class="img-sz-btn" onclick="openImgEditor()" style="color:var(--accent);font-weight:600">✏️ 편집</button>
 </div>
 
-<!-- Toast UI 이미지 편집기 -->
+<!-- Cropper.js 이미지 편집기 -->
 <div class="img-editor-overlay" id="imgEditorOverlay">
   <div class="img-editor-box">
-    <div class="img-editor-header">
-      <span class="img-editor-title">✏️ 이미지 편집</span>
-      <div class="img-editor-btns">
-        <button class="img-editor-save" onclick="saveEditedImage()">저장</button>
-        <button class="img-editor-close" onclick="closeImgEditor()">✕</button>
+    <div class="img-editor-hdr">
+      <span>✏️ 이미지 편집</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="ie-btn accent" onclick="saveEditedImage()">저장</button>
+        <button class="ie-btn close" onclick="closeImgEditor()">✕</button>
       </div>
     </div>
-    <div id="tuiEditorContainer"></div>
+    <div class="img-editor-canvas" id="imgEditorCanvas">
+      <img id="cropperTarget">
+    </div>
+    <div class="img-editor-toolbar">
+      <button class="ie-btn" onclick="cropperDo('rotateLeft')">↺ 90°</button>
+      <button class="ie-btn" onclick="cropperDo('rotateRight')">↻ 90°</button>
+      <button class="ie-btn" onclick="cropperDo('flipH')">↔ 좌우</button>
+      <button class="ie-btn" onclick="cropperDo('flipV')">↕ 상하</button>
+      <div class="ie-sep"></div>
+      <button class="ie-btn" id="btnCropMode" onclick="cropperDo('toggleCrop')">✂ 자르기</button>
+      <button class="ie-btn" onclick="cropperDo('reset')">↩ 초기화</button>
+      <div class="ie-sep"></div>
+      <div class="ie-filter-row">
+        <label>밝기</label>
+        <input type="range" min="-100" max="100" value="0" id="slBright" oninput="updateFilters()">
+        <span id="vBright">0</span>
+      </div>
+      <div class="ie-filter-row">
+        <label>대비</label>
+        <input type="range" min="-100" max="100" value="0" id="slContrast" oninput="updateFilters()">
+        <span id="vContrast">0</span>
+      </div>
+      <div class="ie-filter-row">
+        <label>채도</label>
+        <input type="range" min="-100" max="100" value="0" id="slSaturate" oninput="updateFilters()">
+        <span id="vSaturate">0</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1212,12 +1244,21 @@
   function openNote(noteId, fromLink = false) {
     if (!editor) initEditor();
 
-    // 이동 전 현재 노트 자동저장 처리
+    // ── currentNoteId 바꾸기 전에 현재 노트 즉시 저장 ──
     clearTimeout(autoSaveTimer);
     if (currentNoteId && editor) {
-      const html = editor.getHTML();
+      const saveId = currentNoteId;
+      const html   = editor.getHTML();
       const hasContent = html !== '<p></p>' && html.trim() !== '';
-      if (hasContent) autoSave();
+      if (hasContent) {
+        const plain = editor.getText().trim();
+        const title = plain ? plain.split('\n')[0].trim().slice(0,50) : '제목 없음';
+        sb.from('notes').update({ content: html, title, updated_at: new Date().toISOString() })
+          .eq('id', saveId).then(() => {
+            const idx = notes.findIndex(n => n.id === saveId);
+            if (idx !== -1) { notes[idx].content = html; notes[idx].title = title; }
+          });
+      }
     }
 
     if (fromLink && currentNoteId && currentNoteId !== noteId) {
@@ -1440,90 +1481,120 @@
   // 컨텍스트 메뉴 외부 클릭
   window.hideCtxMenu = function() { document.getElementById('ctxMenu').classList.remove('show'); };
 
-  // ── 모듈 함수 window 등록 ────────────────────────────────
+  // ── window 등록 ──────────────────────────────────────────
   window.openNote    = openNote;
   window.renderList  = renderList;
   window.filterByTag = filterByTag;
 
-  // ── Toast UI 이미지 편집기 ───────────────────────────────
-  let tuiInstance = null;
+  // ── Cropper.js 이미지 편집기 ─────────────────────────────
+  let cropperInstance = null;
+  let cropMode = false;
+  let flipScaleX = 1, flipScaleY = 1;
 
   window.openImgEditor = async function() {
     if (!selectedImg) return;
-    const overlay = document.getElementById('imgEditorOverlay');
-    overlay.classList.add('open');
-    if (tuiInstance) { try { tuiInstance.destroy(); } catch {} tuiInstance = null; }
-    document.getElementById('tuiEditorContainer').innerHTML =
-      '<div id="tuiCanvas" style="height:100%"></div>';
+    cropMode = false; flipScaleX = 1; flipScaleY = 1;
 
-    // CORS 우회: 이미지를 blob → dataURL로 변환
-    let imgSrc = selectedImg.src;
+    // 슬라이더 초기화
+    ['slBright','slContrast','slSaturate'].forEach(id => document.getElementById(id).value = 0);
+    ['vBright','vContrast','vSaturate'].forEach(id => document.getElementById(id).textContent = 0);
+
+    // CORS 우회: blob → dataURL
+    let src = selectedImg.src;
     try {
-      const res  = await fetch(selectedImg.src, { mode: 'cors' });
+      const res  = await fetch(selectedImg.src);
       const blob = await res.blob();
-      imgSrc = await new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onload = e => resolve(e.target.result);
-        reader.readAsDataURL(blob);
-      });
-    } catch(e) { console.warn('이미지 직접 로드 시도:', e); }
+      src = await new Promise(r => { const fr = new FileReader(); fr.onload = e => r(e.target.result); fr.readAsDataURL(blob); });
+    } catch(e) { console.warn('fetch 실패, src 직접 사용'); }
 
-    setTimeout(() => {
-      if (!document.getElementById('tuiCanvas')) return;
-      if (typeof tui === 'undefined' || !tui.ImageEditor) {
-        showToast('이미지 편집기 라이브러리 로드 실패 (CDN 확인 필요)', true);
-        closeImgEditor(); return;
-      }
-      try {
-        tuiInstance = new tui.ImageEditor('#tuiCanvas', {
-          includeUI: {
-            loadImage: { path: imgSrc, name: '이미지' },
-            theme: {
-              'common.backgroundColor': '#1a1a1a',
-              'header.backgroundColor': '#111111',
-              'menu.backgroundColor': '#161616',
-              'submenu.backgroundColor': '#1a1a1a',
-              'submenu.partition.color': '#333',
-              'submenu.normalLabel.color': '#888',
-              'submenu.activeLabel.color': '#f0a500',
-              'range.pointer.color': '#f0a500',
-              'range.bar.color': '#333',
-              'range.subbar.color': '#f0a500',
-              'range.value.color': '#888',
-              'range.value.border': '1px solid #333',
-              'range.value.backgroundColor': '#111',
-              'range.title.color': '#888',
-              'checkbox.border': '1px solid #555',
-              'checkbox.backgroundColor': '#222',
-            },
-            menu: ['crop', 'flip', 'rotate', 'draw', 'shape', 'text', 'filter'],
-            uiSize: { width: '100%', height: '100%' },
-            menuBarPosition: 'bottom',
-          },
-          usageStatistics: false,
-        });
-      } catch(e) {
-        showToast('이미지 편집기 오류: ' + (e.message||''), true);
-        closeImgEditor();
-      }
-    }, 150);
+    const target = document.getElementById('cropperTarget');
+    target.src = src;
+    target.style.filter = '';
+    document.getElementById('imgEditorOverlay').classList.add('open');
+
+    if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
+    target.onload = () => {
+      cropperInstance = new Cropper(target, {
+        viewMode: 1, autoCropArea: 1, movable: true,
+        zoomable: true, rotatable: true, scalable: true,
+        autoCrop: false, background: false,
+      });
+    };
+    if (target.complete) target.onload();
+  };
+
+  window.cropperDo = function(action) {
+    if (!cropperInstance) return;
+    const btn = document.getElementById('btnCropMode');
+    switch(action) {
+      case 'rotateLeft':  cropperInstance.rotate(-90); break;
+      case 'rotateRight': cropperInstance.rotate(90);  break;
+      case 'flipH':
+        flipScaleX *= -1;
+        cropperInstance.scaleX(flipScaleX); break;
+      case 'flipV':
+        flipScaleY *= -1;
+        cropperInstance.scaleY(flipScaleY); break;
+      case 'toggleCrop':
+        cropMode = !cropMode;
+        if (cropMode) { cropperInstance.setAutoCropArea(0.8); cropperInstance.crop(); btn.style.background='#f0a500'; btn.style.color='#000'; }
+        else          { cropperInstance.clear(); btn.style.background=''; btn.style.color=''; }
+        break;
+      case 'reset':
+        flipScaleX = 1; flipScaleY = 1; cropMode = false;
+        cropperInstance.reset(); cropperInstance.clear();
+        btn.style.background=''; btn.style.color='';
+        ['slBright','slContrast','slSaturate'].forEach(id => document.getElementById(id).value = 0);
+        ['vBright','vContrast','vSaturate'].forEach(id => document.getElementById(id).textContent = 0);
+        document.getElementById('cropperTarget').style.filter = '';
+        break;
+    }
+  };
+
+  window.updateFilters = function() {
+    const b  = +document.getElementById('slBright').value;
+    const c  = +document.getElementById('slContrast').value;
+    const s  = +document.getElementById('slSaturate').value;
+    document.getElementById('vBright').textContent   = b;
+    document.getElementById('vContrast').textContent = c;
+    document.getElementById('vSaturate').textContent = s;
+    document.getElementById('cropperTarget').style.filter =
+      `brightness(${1 + b/100}) contrast(${1 + c/100}) saturate(${1 + s/100})`;
   };
 
   window.saveEditedImage = async function() {
-    if (!tuiInstance || !selectedImg) return;
-    const btn = document.querySelector('.img-editor-save');
+    if (!cropperInstance || !selectedImg) return;
+    const btn = document.querySelector('.ie-btn.accent');
     btn.textContent = '저장 중...'; btn.disabled = true;
     try {
-      const dataURL = tuiInstance.toDataURL({ format: 'jpeg', quality: 0.92 });
-      const res     = await fetch(dataURL);
-      const blob    = await res.blob();
-      const path    = `${currentUser.id}/${Date.now()}.jpg`;
-      const { error } = await sb.storage.from('note-images').upload(path, blob, {
-        upsert: true, contentType: 'image/jpeg',
-      });
+      // CSS filter를 canvas에 반영
+      const b = +document.getElementById('slBright').value;
+      const c = +document.getElementById('slContrast').value;
+      const s = +document.getElementById('slSaturate').value;
+      const hasFilter = b !== 0 || c !== 0 || s !== 0;
+
+      let canvas;
+      if (cropMode) canvas = cropperInstance.getCroppedCanvas();
+      else          canvas = cropperInstance.getCanvasData() ? cropperInstance.getCroppedCanvas({ width: selectedImg.naturalWidth, height: selectedImg.naturalHeight }) : null;
+
+      if (!canvas) throw new Error('캔버스 생성 실패');
+
+      // CSS 필터를 canvas에 적용
+      if (hasFilter) {
+        const out = document.createElement('canvas');
+        out.width = canvas.width; out.height = canvas.height;
+        const ctx = out.getContext('2d');
+        ctx.filter = `brightness(${1+b/100}) contrast(${1+c/100}) saturate(${1+s/100})`;
+        ctx.drawImage(canvas, 0, 0);
+        canvas = out;
+      }
+
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.92));
+      const path = `${currentUser.id}/${Date.now()}.jpg`;
+      const { error } = await sb.storage.from('note-images').upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
       if (error) throw error;
+
       const newUrl = sb.storage.from('note-images').getPublicUrl(path).data.publicUrl;
-      // TipTap에서 이미지 src 교체
       const oldSrc = selectedImg.src;
       if (editor) {
         editor.state.doc.descendants((node, pos) => {
@@ -1544,14 +1615,13 @@
 
   window.closeImgEditor = function() {
     document.getElementById('imgEditorOverlay').classList.remove('open');
-    if (tuiInstance) { try { tuiInstance.destroy(); } catch {} tuiInstance = null; }
-    document.getElementById('tuiEditorContainer').innerHTML = '';
+    if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
+    document.getElementById('cropperTarget').src = '';
   };
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && document.getElementById('imgEditorOverlay')?.classList.contains('open')) {
+    if (e.key === 'Escape' && document.getElementById('imgEditorOverlay')?.classList.contains('open'))
       window.closeImgEditor();
-    }
   });
 </script>
 </body>
